@@ -1,6 +1,4 @@
-# 🍲 AAIS-AI 
-
-### Projet BGDIA706 CREATION DE VALEUR
+## 🍲 Projet BGDIA706 CREATION DE VALEUR
 
 ## Prerequisites
 Before running the code, ensure the following are installed and configured:
