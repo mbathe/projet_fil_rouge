@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "projet-creation-valeur"
+version = "0.1.0"
+description = ""
+authors = ["mbathe <mbathepaul@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+matplotlib = "^3.10.0"
+seaborn = "^0.13.2"
+pandas = "^2.2.3"
+scipy = "^1.15.0"
+scikit-learn = "^1.6.0"
+tqdm = "^4.67.1"
+jupyter = "^1.1.1"
+python-dotenv = "^1.0.1"
+gdown = "^5.2.0"
+
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.5"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
