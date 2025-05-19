@@ -1,0 +1,14 @@
+%YAML:1.0
+---
+camera_name: rtabmap_calib
+image_width: 640
+image_height: 480
+camera_matrix:
+   rows: 3
+   cols: 3
+   data: [ 535.39999999999998, 0., 320.10000000000002, 0.,
+       539.20000000000005, 247.59999999999999, 0., 0., 1. ]
+local_transform:
+   rows: 3
+   cols: 4
+   data: [ 0., 0., 1., 0., -1., 0., 0., 0., 0., -1., 0., 0. ]
