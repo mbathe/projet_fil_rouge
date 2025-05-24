@@ -95,7 +95,9 @@ pip install -r requirements.txt
 # ou vous pouvez les télécharger manuellement dans le dossier weights/
 ```
 
-3. **Download the Dataset**  :
+1. **Télécharger le dataset de test**  :
+
+
 Exécutez la commande suivante à la racine du projet pour télécharger le jeu de données d'images deer_walk de test  ./data/deer_walk/ (défini par la variable d'environnement DIR_DATASET).
 ```bash
  python scripts/download_dataset.py
