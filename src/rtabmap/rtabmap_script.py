@@ -200,7 +200,7 @@ def execute_command(config_file, start_command=[], end_command=[], show_progress
                 check=True,
                 stdout=sys.stdout,
                 stderr=sys.stderr,
-                text=False)
+                text=True)
             print("Succès!")
         except subprocess.CalledProcessError as e:
             print(f"Erreur: {e}")
