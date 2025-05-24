@@ -2,7 +2,7 @@
 
 
 
-![Texte alternatif]([URL_de_l_image](https://github.com/mbathe/projet_fil_rouge/blob/main/deek_walk_3dmap.png))
+![](https://github.com/mbathe/projet_fil_rouge/blob/main/deek_walk_3dmap.png)
 
 ## 📋 Aperçu du projet
 
