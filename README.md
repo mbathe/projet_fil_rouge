@@ -96,6 +96,25 @@ docker pull introlab3it/rtabmap:latest
 # ou vous pouvez les télécharger manuellement dans le dossier weights/
 ```
 
+### Construction de l'image Docker personnalisée
+
+Le projet utilise une image Docker personnalisée qui contient RTAB-Map et les scripts nécessaires pour la génération de cartographie 3D.
+
+⚠️ **IMPORTANT** : Avant d'exécuter le programme principal, vous devez construire l'image Docker :
+
+```bash
+sudo docker build -t rtabmap_ubuntu20 .
+```
+
+Le `Dockerfile` à la racine du projet contient les instructions pour :
+1. Construire l'image Docker basée sur RTAB-Map
+2. Injecter le script `./src/rtabmap/rtabmap_script.py` dans l'image
+3. Configurer l'environnement d'exécution pour la cartographie 3D
+
+Ce script est automatiquement appelé lorsque le conteneur Docker est exécuté depuis le code Python, et il prend en charge la génération de la cartographie 3D.
+
+**Note** : Chaque fois que vous modifiez le contenu du répertoire `./src/rtabmap/`, vous devez reconstruire l'image Docker pour que les changements soient pris en compte.
+
 ## 🚀 Utilisation
 
 ### Mode vidéo (à partir d'une source vidéo)
@@ -174,7 +193,31 @@ Le projet expose plusieurs paramètres RTAB-Map pour les utilisateurs avancés :
 - Filtrage de nuage de points
 - Paramètres d'optimisation du maillage
 
-Consultez la documentation RTAB-Map complète pour plus de détails.
+### Fichiers de configuration paramètres
+
+Le répertoire `src/rtabmap/rtabmap_params/` contient trois fichiers JSON qui permettent de configurer finement le comportement de RTAB-Map :
+
+1. **`export_params.json`** : Paramètres pour l'exportation des nuages de points et meshes
+   - Format d'exportation (PLY, OBJ, etc.)
+   - Densité des nuages de points
+   - Options de texture et coloration
+   - Filtres d'export (distance, bruit, etc.)
+
+2. **`generate_db_params.json`** : Paramètres pour la génération initiale de la base de données
+   - Paramètres de détection de feature points
+   - Options de calibration de caméra
+   - Paramètres d'optimisation de la carte
+   - Configuration des correspondances de feature
+
+3. **`reprocess_params.json`** : Paramètres pour le retraitement d'une base de données existante
+   - Options de filtrage
+   - Paramètres de re-optimisation
+   - Techniques de loop closure
+   - Configuration des ajustements globaux
+
+Ces fichiers peuvent être modifiés selon vos besoins pour affiner les résultats de la cartographie 3D.
+
+Consultez la documentation RTAB-Map complète pour plus de détails sur les paramètres disponibles : [Documentation RTAB-Map](http://wiki.ros.org/rtabmap_ros/Tutorials/Advanced%20Parameter%20Tuning)
 
 ## 🧠 Extensions et personnalisations
 
