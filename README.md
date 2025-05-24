@@ -2,7 +2,7 @@
 
 
 
-![](https://github.com/mbathe/projet_fil_rouge/blob/main/deek_walk_3dmap.png)
+![](https://github.com/mbathe/projet_fil_rouge/blob/main/deer_walk_3dmap.png)
 
 ## 📋 Aperçu du projet
 
@@ -93,6 +93,13 @@ pip install -r requirements.txt
 ```bash
 # Le script téléchargera automatiquement les poids lors de la première exécution
 # ou vous pouvez les télécharger manuellement dans le dossier weights/
+```
+
+3. **Download the Dataset**  :
+Exécutez la commande suivante à la racine du projet pour télécharger le jeu de données d'images deer_walk de test  ./data/deer_walk/ (défini par la variable d'environnement DIR_DATASET).
+```bash
+ python scripts/download_dataset.py
+
 ```
 
 ### Construction de l'image Docker personnalisée

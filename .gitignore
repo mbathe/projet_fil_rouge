@@ -175,7 +175,7 @@ cython_debug/
 
 dataset/
 dataset/
-data/
+data/dataset/
 old/
 depth/DepthAnythingV2/
 weight/
