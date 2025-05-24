@@ -85,12 +85,7 @@ Les étapes principales sont :
 pip install -r requirements.txt
 ```
 
-2. **Téléchargement de l'image Docker RTAB-Map** :
-```bash
-docker pull introlab3it/rtabmap:latest
-```
-
-3. **Téléchargement des poids du modèle** :
+2. **Téléchargement des poids du modèle** :
 ```bash
 # Le script téléchargera automatiquement les poids lors de la première exécution
 # ou vous pouvez les télécharger manuellement dans le dossier weights/
@@ -107,11 +102,13 @@ sudo docker build -t rtabmap_ubuntu20 .
 ```
 
 Le `Dockerfile` à la racine du projet contient les instructions pour :
-1. Construire l'image Docker basée sur RTAB-Map
+1. Construire l'image Docker avec RTAB-Map et toutes les dépendances nécessaires
 2. Injecter le script `./src/rtabmap/rtabmap_script.py` dans l'image
 3. Configurer l'environnement d'exécution pour la cartographie 3D
 
 Ce script est automatiquement appelé lorsque le conteneur Docker est exécuté depuis le code Python, et il prend en charge la génération de la cartographie 3D.
+
+**Note** : Il n'est pas nécessaire d'installer RTAB-Map séparément ou de télécharger une autre image Docker, car le Dockerfile configure tout ce qui est nécessaire.
 
 **Note** : Chaque fois que vous modifiez le contenu du répertoire `./src/rtabmap/`, vous devez reconstruire l'image Docker pour que les changements soient pris en compte.
 
@@ -121,17 +118,21 @@ Ce script est automatiquement appelé lorsque le conteneur Docker est exécuté 
 
 **Important** : Comme le programme utilise Docker avec des montages de volumes, tous les chemins doivent être **absolus** et non relatifs. Les chemins relatifs ne fonctionneront pas car Docker nécessite des chemins complets pour monter les volumes correctement.
 
+Dans les exemples ci-dessous, remplacez `<PROJECT_ROOT>` par le chemin absolu vers la racine de votre projet.
+
 ### Exemple complet avec chemins absolus
 
 ```bash
-python3 /home/paul/Cours/projet_fil_rouge/src/main.py \
-  --image_folder "/home/paul/Cours/projet_fil_rouge/data/images" \
-  --depth_folder "/home/paul/Cours/projet_fil_rouge/data/depth" \
-  --calibration_file "/home/paul/Cours/projet_fil_rouge/data/rtabmap_calib.yaml" \
-  --rgb_timestamps "/home/paul/Cours/projet_fil_rouge/data/img_timestamps.csv" \
-  --depth_timestamps "/home/paul/Cours/projet_fil_rouge/data/depth_timestamps.csv" \
-  --output_folder "/home/paul/Cours/projet_fil_rouge/output"
+python3 <PROJECT_ROOT>/src/main.py \
+  --image_folder "<PROJECT_ROOT>/data/images" \
+  --depth_folder "<PROJECT_ROOT>/data/depth" \
+  --calibration_file "<PROJECT_ROOT>/data/rtabmap_calib.yaml" \
+  --rgb_timestamps "<PROJECT_ROOT>/data/img_timestamps.csv" \
+  --depth_timestamps "<PROJECT_ROOT>/data/depth_timestamps.csv" \
+  --output_folder "<PROJECT_ROOT>/output"
 ```
+
+Par exemple, si votre projet est situé dans `/home/utilisateur/cartographie3d`, tous les chemins doivent commencer par cette racine.
 
 ### Mode vidéo (à partir d'une source vidéo)
 
@@ -211,7 +212,7 @@ Le projet expose plusieurs paramètres RTAB-Map pour les utilisateurs avancés :
 
 ### Fichiers de configuration paramètres
 
-Le répertoire `src/rtabmap/rtabmap_params/` contient trois fichiers JSON qui permettent de configurer finement le comportement de RTAB-Map :
+Le répertoire `<PROJECT_ROOT>/src/rtabmap/rtabmap_params/` contient trois fichiers JSON qui permettent de configurer finement le comportement de RTAB-Map :
 
 1. **`export_params.json`** : Paramètres pour l'exportation des nuages de points et meshes
    - Format d'exportation (PLY, OBJ, etc.)
