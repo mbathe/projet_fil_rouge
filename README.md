@@ -98,30 +98,56 @@ docker pull introlab3it/rtabmap:latest
 
 ## 🚀 Utilisation
 
-### Mode vidéo
+### Mode vidéo (à partir d'une source vidéo)
 
 ```bash
-python src/main.py --input video.mp4 --output-dir ./output --mode video --fps 5
+python src/main.py --source video --images_folder ./chemin/vers/la/video.mp4 --output_folder ./output_folder --frequence 5
 ```
 
-### Mode images
+### Mode images (RGB sans profondeur)
 
 ```bash
-python src/main.py --input ./images_folder --output-dir ./output --mode images
+python src/main.py --source image --images_folder ./chemin/vers/images --output_folder ./output_folder
 ```
 
-### Mode RGB-D
+### Mode RGB-D (images avec profondeur)
 
 ```bash
-python src/main.py --input ./rgbd_folder --depth ./depth_folder --output-dir ./output --mode rgbd
+python src/main.py --source image_with_depth --images_folder ./chemin/vers/images/rgb --depth_folder ./chemin/vers/images/depth --output_folder ./output_folder
 ```
 
-### Options importantes
+### Arguments disponibles
 
-- `--depth-model` : Modèle d'estimation de profondeur (default: "depthanything")
-- `--resolution` : Résolution de sortie (default: "1280x720")
-- `--export-format` : Format d'exportation ("ply", "mesh", ou "both")
-- `--with-texture` : Ajouter la texture au maillage 3D
+Voici la liste complète des arguments acceptés par le script :
+
+```
+--images_folder        Dossier contenant les images RGB ou chemin vers le fichier vidéo (défaut: "./images_folder")
+--depth_folder         Dossier contenant les images de profondeur (défaut: "./depth_folder")
+--calibration_file     Chemin vers le fichier de calibration de caméra (défaut: "./rtabmap_calib.yaml")
+--rgb_timestamps       Chemin vers le fichier CSV de timestamps RGB (défaut: "./img_timestamps.csv")
+--depth_timestamps     Chemin vers le fichier CSV de timestamps profondeur (défaut: "./depth_timestamps.csv")
+--output_folder        Dossier de sortie pour tous les résultats (défaut: "./output_folder")
+--source               Source à utiliser: "image" (RGB sans profondeur), "image_with_depth" (RGB-D), "video" (vidéo)
+                       (défaut: "image_with_depth")
+--frequence            Fréquence d'extraction d'images depuis la vidéo en Hz (défaut: 20)
+```
+
+### Exemples d'utilisation
+
+#### Traitement vidéo avec une fréquence de 10 Hz
+```bash
+python src/main.py --source video --images_folder ./data/video.mp4 --output_folder ./results --frequence 10
+```
+
+#### Traitement d'images RGB avec génération de profondeur
+```bash
+python src/main.py --source image --images_folder ./data/rgb_images --output_folder ./results
+```
+
+#### Traitement d'images RGB-D existantes avec fichiers de timestamps
+```bash
+python src/main.py --source image_with_depth --images_folder ./data/rgb --depth_folder ./data/depth --rgb_timestamps ./data/rgb_timestamps.csv --depth_timestamps ./data/depth_timestamps.csv --output_folder ./results
+```
 
 ## 📊 Format des données
 
