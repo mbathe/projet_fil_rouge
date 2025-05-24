@@ -8,6 +8,8 @@ import sys
 from tols import load_config, config_to_args
 from dotenv import load_dotenv
 import os
+import re
+from tqdm import tqdm
 
 # Charge les variables depuis le fichier .env
 load_dotenv()
@@ -39,6 +41,7 @@ def convert_to_timestamps(img_path=None, depth_path=None, img_timestamps_path=No
     """
     def process_files(directory, timestamps_df, label="image"):
         used_timestamps = set()
+        adjusted_count = 0
         
         # Get all supported image files in the directory
         files = []
@@ -46,10 +49,14 @@ def convert_to_timestamps(img_path=None, depth_path=None, img_timestamps_path=No
             files.extend(glob.glob(os.path.join(directory, ext)))
         
         if not files:
-            print(f"[WARN] No {label} files found in {directory}")
+            print(f"[WARN] Aucun fichier {label} trouvé dans {directory}")
             return
-            
-        for file in files:
+
+        print(
+            f"[INFO] Renommage de {len(files)} images {label} avec les timestamps...")
+        pbar = tqdm(files, desc=f"Renommage {label}", unit="img")
+
+        for file in pbar:
             basename = os.path.basename(file)
             name_without_ext, extension = os.path.splitext(basename)
             extension = extension.lower()  # Normalize extension
@@ -60,21 +67,28 @@ def convert_to_timestamps(img_path=None, depth_path=None, img_timestamps_path=No
                 # Try matching without extension
                 match = timestamps_df[timestamps_df["filename"] == name_without_ext]
                 if match.empty:
-                    print(f"[WARN] {label} - No timestamp found for file {basename}, skipping.")
+                    pbar.set_description(f"❌ Pas de timestamp pour {basename}")
                     continue
             
             timestamp = match["timestamp"].values[0]
             
             # Avoid zero or duplicate timestamps
-            while timestamp == 0 or timestamp in used_timestamps:
+            if timestamp == 0 or timestamp in used_timestamps:
+                old_timestamp = timestamp
                 timestamp += np.random.uniform(0.001, 0.005)
-                print(f"[INFO] {label} - Adjusted duplicate/zero timestamp for {basename}: {timestamp:.6f}")
+                adjusted_count += 1
+                pbar.set_description(
+                    f"⚠️ Ajustement {basename}: {old_timestamp:.6f} → {timestamp:.6f}")
+            else:
+                pbar.set_description(f"✓ Renommage {basename}")
             
             used_timestamps.add(timestamp)
             
             new_name = os.path.join(os.path.dirname(file), f"{timestamp:.6f}{extension}")
             os.rename(file, new_name)
-            print(f"[OK] {label} - Renamed {basename} → {os.path.basename(new_name)}")
+
+        print(
+            f"[OK] {len(files)} fichiers {label} renommés ({adjusted_count} timestamps ajustés)")
 
     # Process RGB images
     if img_path and img_timestamps_path:
@@ -134,69 +148,155 @@ def prepare_dataset(rgb_dir, depth_dir, calib_file, rgb_timestamps, depth_timest
         os.makedirs(sync_dir, exist_ok=True)
         print(f"[INFO] Directory ready: {sync_dir}")
 
-    # Copy RGB files (all supported formats)
-    copied_rgb_count = 0
+    # Collecte de tous les fichiers RGB à copier
+    rgb_files = []
     for ext in ['*.png', '*.jpg', '*.jpeg', '*.tiff', '*.tif']:
-        for src in glob.glob(os.path.join(rgb_dir, ext)):
+        rgb_files.extend(glob.glob(os.path.join(rgb_dir, ext)))
+
+    # Copie des fichiers RGB avec barre de progression
+    if rgb_files:
+        print(f"[INFO] Copie de {len(rgb_files)} images RGB...")
+        for src in tqdm(rgb_files, desc="Copie RGB", unit="img"):
             filename = os.path.basename(src)
             dst = os.path.join(rgb_sync_dir, filename)
             shutil.copy2(src, dst)
-            copied_rgb_count += 1
-            print(f"[OK] Copied RGB: {filename}")
-    
-    if copied_rgb_count == 0:
-        print(f"[WARN] No supported image files found in RGB directory: {rgb_dir}")
+        print(f"[OK] {len(rgb_files)} images RGB copiées avec succès")
+    else:
+        print(f"[WARN] Aucune image trouvée dans le répertoire RGB: {rgb_dir}")
 
-    # Copy depth files (all supported formats)
-    copied_depth_count = 0
-    
+    # Collecte de tous les fichiers de profondeur à copier
+    depth_files = []
     for ext in ['*.png', '*.jpg', '*.jpeg', '*.tiff', '*.tif']:
-        for src in glob.glob(os.path.join(depth_dir, ext)):
+        depth_files.extend(glob.glob(os.path.join(depth_dir, ext)))
+
+    # Copie des fichiers de profondeur avec barre de progression
+    if depth_files:
+        print(f"[INFO] Copie de {len(depth_files)} images de profondeur...")
+        for src in tqdm(depth_files, desc="Copie Depth", unit="img"):
             filename = os.path.basename(src)
             dst = os.path.join(depth_sync_dir, filename)
             shutil.copy2(src, dst)
-            copied_depth_count += 1
-            print(f"[OK] Copied Depth: {filename}")
-    
-    
-    if copied_depth_count == 0:
-        print(f"[WARN] No supported image files found in depth directory: {depth_dir}")
+        print(
+            f"[OK] {len(depth_files)} images de profondeur copiées avec succès")
+    else:
+        print(
+            f"[WARN] Aucune image trouvée dans le répertoire de profondeur: {depth_dir}")
 
 
-
-
-
-
-def execute_command(config_file, start_command=[], end_command=[]):
+def execute_command(config_file, start_command=[], end_command=[], show_progress=False):
     """Exécute la commande avec les paramètres de configuration"""
     # Charger la configuration
     config = load_config(config_file)
     
     config_args = config_to_args(config)
     
-    full_command = start_command + config_args +end_command
-    
-    print("Commande exécutée:")
-    print(" ".join(full_command))
-    
-    try:
-        result = subprocess.run(
-        full_command,
-        check=True,
-        stdout=sys.stdout,
-        stderr=sys.stderr,
-        text=True)
-        print("Succès!")
-        print(result.stdout)
-    except subprocess.CalledProcessError as e:
-        print(f"Erreur: {e}")
-        print(f"Sortie d'erreur: {e.stderr}")
+    full_command = start_command + config_args + end_command
 
+    if not show_progress:
+        # Méthode standard d'exécution
+        try:
+            result = subprocess.run(
+                full_command,
+                check=True,
+                stdout=sys.stdout,
+                stderr=sys.stderr,
+                text=False)
+            print("Succès!")
+        except subprocess.CalledProcessError as e:
+            print(f"Erreur: {e}")
+            print(f"Sortie d'erreur: {e.stderr}")
+    else:
+        # Méthode avec barre de progression
+        try:
+            # Créer un fichier temporaire pour stocker la sortie
+            temp_output_file = "/tmp/rtabmap_output.txt"
 
+            # Rediriger toute la sortie vers le fichier temporaire
+            with open(temp_output_file, 'w') as f:
+                # Exécuter la commande avec redirection de sortie
+                process = subprocess.Popen(
+                    full_command,
+                    stdout=f,
+                    stderr=subprocess.STDOUT,
+                    text=True
+                )
 
+            # Initialiser la barre de progression sans valeur totale pour le moment
+            pbar = tqdm(desc="Initialisation...", unit="iter", ncols=100)
 
+            # Expressions régulières pour extraire les informations de progression
+            iter_pattern = re.compile(r'(?:Iteration|Processed) (\d+)/(\d+)')
 
+            # Variables pour suivre la progression
+            total_iters = None
+            last_iter = 0
 
+            # Surveiller le fichier de sortie pendant que le processus s'exécute
+            while process.poll() is None:  # Tant que le processus est en cours d'exécution
+                # Lire le fichier de sortie
+                try:
+                    with open(temp_output_file, 'r') as f:
+                        content = f.read()
+
+                    # Trouver la dernière itération mentionnée
+                    matches = list(iter_pattern.finditer(content))
+                    if matches:
+                        latest_match = matches[-1]
+                        current_iter = int(latest_match.group(1))
+
+                        if total_iters is None and len(matches) > 0:
+                            total_iters = int(latest_match.group(2))
+                            pbar.reset(total=total_iters)
+                            pbar.set_description(f"Traitement RTAB-Map")
+
+                        # Extraire les informations supplémentaires
+                        last_line = content.splitlines()[-1] if content else ""
+                        info_match = re.search(
+                            r'Iteration|Processed \d+/\d+: (.+)', last_line)
+                        if info_match:
+                            last_info = info_match.group(1)
+                            pbar.set_description(f"RTAB-Map [{last_info}]")
+
+                        # Mettre à jour la barre de progression
+                        if current_iter > last_iter:
+                            pbar.update(current_iter - last_iter)
+                            last_iter = current_iter
+                except Exception as e:
+                    # Ignorer les erreurs de lecture du fichier
+                    pass
+
+                # Pause pour éviter une utilisation excessive du CPU
+                import time
+                time.sleep(0.1)
+
+            # Fermer la barre de progression
+            pbar.close()
+
+            # Vérifier le code de retour du processus
+            if process.returncode != 0:
+                print(
+                    f"La commande a échoué avec le code de retour {process.returncode}")
+
+                # Afficher les dernières lignes du fichier de sortie en cas d'erreur
+                try:
+                    with open(temp_output_file, 'r') as f:
+                        last_lines = f.readlines()[-20:]  # Dernières 20 lignes
+                        print("Dernières lignes de la sortie:")
+                        for line in last_lines:
+                            print(line.strip())
+                except:
+                    pass
+            else:
+                print("Traitement RTAB-Map terminé avec succès!")
+
+            # Supprimer le fichier temporaire
+            try:
+                os.remove(temp_output_file)
+            except:
+                pass
+
+        except Exception as e:
+            print(f"Erreur lors de l'exécution: {e}")
 
 
 def generate_db():
@@ -210,8 +310,11 @@ def generate_db():
         calib_file: Calibration file path
     """
     # Command to generate the database
-         
-    execute_command(GENERATE_DB_PARAMS_FILES, start_command=["rtabmap-rgbd_dataset"], end_command=["--output_path", "/rtabmap_ws"])
+    print("\n===== Génération de la base de données RTAB-Map =====")
+    execute_command(GENERATE_DB_PARAMS_FILES,
+                    start_command=["rtabmap-rgbd_dataset"],
+                    end_command=["--output_path", "/rtabmap_ws"],
+                    show_progress=True)
     
    
 
@@ -225,10 +328,12 @@ def reprocess():
     Args:
         db_path: Path to the RTAB-Map database
     """
-    execute_command(REPROCESS_PARAMS_FILES, start_command=["rtabmap-reprocess"], end_command=["/rtabmap_ws/rtabmap.db", "output_optimized.db",])
-
-
-
+    print("\n===== Retraitement de la base de données RTAB-Map =====")
+    execute_command(REPROCESS_PARAMS_FILES,
+                    start_command=["rtabmap-reprocess"],
+                    end_command=["/rtabmap_ws/rtabmap.db",
+                                 "output_optimized.db"],
+                    show_progress=True)
 
 def export_point_cloud():
     """
@@ -237,13 +342,15 @@ def export_point_cloud():
         db_path: Path to the RTAB-Map database
         output_type: Type of output (e.g., mesh, cloud)
     """
+    print("\n===== Exportation du nuage de points =====")
     output_type = "--cloud"  # Change to "--cloud" for point cloud export
-    start_command = [
-        "rtabmap-export"
-    ]
+    start_command = ["rtabmap-export"]
     
-    execute_command(EXPORT_PARAMS_FILES, start_command=start_command, end_command=[f"{output_type}","--output", "point", "/rtabmap_ws/output_optimized.db"])
-    
+    execute_command(EXPORT_PARAMS_FILES,
+                    start_command=start_command,
+                    end_command=[f"{output_type}", "--output",
+                                 "point", "/rtabmap_ws/output_optimized.db"],
+                    show_progress=False)
 
 
 def main():
@@ -276,25 +383,13 @@ if __name__ == "__main__":
         prepare_dataset(rgb_path_from, depth_path_from, calib_path, rgb_timestamps, depth_timestamps)
         
         print("\n===== Converting to Timestamps =====")
-        
-        
         convert_to_timestamps(
             img_path=rgb_path, 
             depth_path=DEPTH_PATH,  
             img_timestamps_path=rgb_timestamps, 
             depth_timestamps_path=depth_timestamps
         )
-        
-        from pathlib import Path
-
-        chemin = Path("/rtabmap_ws")
-        repertoires = [p.name for p in chemin.iterdir() if p.is_dir()]
-
-        print(repertoires)
-                
-        print("\n===== Processing with RTAB-Map =====")
         main()
-        
         print("\n===== Copying Results =====")
         os.makedirs("/rtabmap_ws/output", exist_ok=True)
         shutil.copy2("/rtabmap_ws/output_optimized.db", "/rtabmap_ws/output/rtabmap.db")

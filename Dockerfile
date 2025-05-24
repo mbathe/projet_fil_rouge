@@ -76,9 +76,11 @@ COPY ./src/rtabmap/ /rtabmap_ws/
 
 RUN python3 -m pip install pandas
 RUN pip install python-dotenv
+RUN pip install tqdm
 
 RUN mkdir -p /rtabmap_ws/rgb_sync
 RUN mkdir -p /rtabmap_ws/depth_sync
+
 
 RUN echo "/usr/local/lib" >> /etc/ld.so.conf.d/rtabmap.conf && ldconfig
 ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
