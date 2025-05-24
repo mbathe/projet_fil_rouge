@@ -220,10 +220,12 @@ def parse_arguments() -> argparse.Namespace:
 
     # Paramètres d'entrée
     parser.add_argument("--image_folder", type=str,
-                        default=os.path.join(PROJECT_ROOT, "data/images"),
+                        default=os.path.join(
+                            PROJECT_ROOT, "data/dataset/deer_walk/images"),
                         help="Dossier contenant les images RGB ou chemin vers le fichier vidéo")
     parser.add_argument("--depth_folder", type=str,
-                        default=os.path.join(PROJECT_ROOT, "data/depth"),
+                        default=os.path.join(
+                            PROJECT_ROOT, "data/dataset/deer_walk/depth"),
                         help="Dossier contenant les images avec profondeur")
     parser.add_argument("--calibration_file", type=str,
                         default=os.path.join(
@@ -231,11 +233,11 @@ def parse_arguments() -> argparse.Namespace:
                         help="Chemin vers le fichier de calibration")
     parser.add_argument("--rgb_timestamps", type=str,
                         default=os.path.join(
-                            PROJECT_ROOT, "data/img_timestamps.csv"),
+                            PROJECT_ROOT, "data/dataset/deer_walk/img_timestamps.csv"),
                         help="Chemin vers le fichier de timestamps RGB")
     parser.add_argument("--depth_timestamps", type=str,
                         default=os.path.join(
-                            PROJECT_ROOT, "data/depth_timestamps.csv"),
+                            PROJECT_ROOT, "data/dataset/deer_walk/depth_timestamps.csv"),
                         help="Chemin vers le fichier de timestamps profondeur")
     parser.add_argument("--output_folder", type=str,
                         default=os.path.join(PROJECT_ROOT, "output"),
