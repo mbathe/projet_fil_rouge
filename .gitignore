@@ -71,7 +71,6 @@ instance/
 # Sphinx documentation
 docs/_build/
 deer_walk/
-output/
 DepthAnythingV2/
 
 
