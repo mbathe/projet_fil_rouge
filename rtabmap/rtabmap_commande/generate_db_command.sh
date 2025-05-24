@@ -1,1 +1,0 @@
-rtabmap-rgbd_dataset   --rgb_path "/home/pmbathe/fin/my_map/rgb_sync"   --depth_path "/home/pmbathe/fin/my_map/depth_sync" --times "/home/pmbathe/fin/my_map/timestamps.csv"  --calib "/home/pmbathe/fin/my_map/rtabmap_calib.yaml"   --output_path "/home/pmbathe/projet_fil_roug"

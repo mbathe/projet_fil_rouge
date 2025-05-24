@@ -1,141 +1,165 @@
+# Projet de Cartographie 3D avec RTAB-Map
 
-# RTAB-Map - Pipeline de Génération de Nuage de Points 3D
+## 📋 Aperçu du projet
 
-Ce script Python automatise la préparation d’un dataset RGB-D pour RTAB-Map, la conversion des timestamps, l’exécution de RTAB-Map pour le traitement SLAM, et l’exportation du nuage de points en `.ply`.
+Ce projet permet de générer une cartographie 3D à partir de différentes sources d'entrée :
+- Vidéos (segmentées en images)
+- Images RGB (avec estimation de profondeur)
+- Images RGB-D existantes
 
----
+Le workflow principal consiste à :
+1. **Acquisition des données** : vidéo ou séquence d'images
+2. **Estimation de profondeur** : utilisation du modèle DepthAnythingV2 pour créer des images de profondeur
+3. **Cartographie 3D** : utilisation de RTAB-Map via Docker pour générer un modèle 3D
+4. **Exportation** : nuage de points au format .ply ou mesh pour visualisation et analyse
 
-## 📌 Fonctionnalités
+## 🔍 Technologies clés
 
-1. **Vérifie et valide les fichiers CSV** (`img_timestamps.csv`, `depth_timestamps.csv`).
-2. **Nettoie et copie** les dossiers `rgb_sync/` et `depth_sync/`.
-3. **Supprime et remplace** le fichier de calibration `rtabmap_calib.yaml`.
-4. **Renomme** les fichiers RGB et profondeur avec leur `timestamp`.
-5. **Exécute RTAB-Map** sur les données préparées.
-6. **Exporte** un fichier `.ply` contenant le nuage de points 3D.
+- **RTAB-Map** (Real-Time Appearance-Based Mapping) : Framework de SLAM pour la cartographie 3D
+- **DepthAnythingV2** : Modèle de deep learning pour l'estimation de profondeur à partir d'images RGB
+- **Docker** : Conteneurisation des dépendances complexes
+- **Python** : Orchestration du pipeline complet
 
----
-
-## 🧾 Arborescence attendue
-
-Avant exécution :
-
-```
-dataset/
-├── rgb/                   # Images RGB originales (.png)
-├── depth/                 # Images de profondeur originales (.png)
-├── img_timestamps.csv     # Timestamp des images RGB
-├── depth_timestamps.csv   # Timestamp des images profondeur
-└── calib.yaml             # Fichier de calibration caméra
-```
-
-Après exécution :
+## 🏗️ Architecture du projet
 
 ```
-output_dir/
-├── rgb_sync/              # Images RGB renommées avec timestamp
-├── depth_sync/            # Images Depth renommées
-├── rtabmap_calib.yaml     # Fichier de calibration copié
-├── img_timestamps.csv     # Copie validée
-├── depth_timestamps.csv   # Copie validée
-└── pointcloud.ply         # Nuage de points 3D exporté
+projet/
+├── data/                  # Données d'exemple
+├── notebook/              # Notebooks d'expérimentation
+├── src/
+│   ├── depth/             # Code pour l'estimation de profondeur
+│   ├── rtabmap/           # Code pour la génération de cartographie 3D
+│   └── main.py            # Point d'entrée de l'application
+├── output/                # Base de données RTAB-Map, fichiers mesh et cloud
+├── weight/                # Poids des modèles de deep learning
+└── scripts/               # Scripts utilitaires
 ```
 
----
+## 📦 Modules principaux
 
-## 🚀 Exécution
+### 1. Estimation de profondeur
+- Utilise le modèle **DepthAnythingV2** pour générer des cartes de profondeur à partir d'images RGB
+- Traite soit des images individuelles, soit extrait des frames d'une vidéo
+- Calibre et normalise les données de profondeur pour RTAB-Map
 
-### Commande
+### 2. Cartographie RTAB-Map
+- Utilise les paires RGB-D pour construire une représentation 3D
+- Génère une base de données de l'environnement avec informations de localisation
+- Exécute les algorithmes de SLAM pour aligner les images dans l'espace 3D
+
+### 3. Exportation et visualisation
+- Génère des nuages de points 3D (.ply)
+- Crée des maillages 3D (mesh)
+- Offre des options de projection 2D du modèle 3D
+
+## 🛠️ Installation et configuration
+
+### Prérequis
+- Python 3.8+
+- Docker
+- GPU recommandé pour l'inférence du modèle de profondeur
+
+### Installation de Docker
+
+Pour installer Docker, veuillez suivre la documentation officielle de Docker correspondant à votre système d'exploitation :
+- **Site d'installation officiel** : [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
+- Choisissez votre distribution Linux, ou Windows/macOS selon votre système
+
+### Configuration de Docker sans sudo (important)
+
+⚠️ **IMPORTANT** : Comme Docker est invoqué directement depuis le code Python de ce projet, il est **crucial** de configurer Docker pour qu'il fonctionne sans sudo sur les systèmes Linux. Sans cette configuration, les scripts Python ne pourront pas exécuter les commandes Docker correctement.
+
+Suivez les instructions de post-installation pour votre plateforme :
+- **Documentation post-installation** : [https://docs.docker.com/engine/install/linux-postinstall/](https://docs.docker.com/engine/install/linux-postinstall/)
+
+Les étapes principales sont :
+1. Ajouter votre utilisateur au groupe Docker
+2. Appliquer les changements de groupe
+3. Vérifier l'installation sans sudo
+4. Configurer Docker pour démarrer au boot
+
+### Configuration de l'environnement
+
+1. **Installation des dépendances Python** :
+```bash
+pip install -r requirements.txt
+```
+
+2. **Téléchargement de l'image Docker RTAB-Map** :
+```bash
+docker pull introlab3it/rtabmap:latest
+```
+
+3. **Téléchargement des poids du modèle** :
+```bash
+# Le script téléchargera automatiquement les poids lors de la première exécution
+# ou vous pouvez les télécharger manuellement dans le dossier weights/
+```
+
+## 🚀 Utilisation
+
+### Mode vidéo
 
 ```bash
-python script.py <chemin_rgb> <chemin_depth> <fichier_calibration> <csv_rgb> <csv_depth>
+python src/main.py --input video.mp4 --output-dir ./output --mode video --fps 5
 ```
 
-### Exemple
+### Mode images
 
 ```bash
-python script.py ./dataset/rgb ./dataset/depth ./dataset/calib.yaml ./dataset/img_timestamps.csv ./dataset/depth_timestamps.csv
+python src/main.py --input ./images_folder --output-dir ./output --mode images
 ```
 
----
-
-## ✅ Pré-requis
-
-- Python 3.x
-- Bibliothèques : `pandas`, `numpy`
-- RTAB-Map installé avec :
-  - `rtabmap-rgbd_dataset`
-  - `rtabmap-export`
-
-### Installation des bibliothèques Python
+### Mode RGB-D
 
 ```bash
-pip install pandas numpy
+python src/main.py --input ./rgbd_folder --depth ./depth_folder --output-dir ./output --mode rgbd
 ```
 
----
+### Options importantes
 
-## 📂 Explication des modules
+- `--depth-model` : Modèle d'estimation de profondeur (default: "depthanything")
+- `--resolution` : Résolution de sortie (default: "1280x720")
+- `--export-format` : Format d'exportation ("ply", "mesh", ou "both")
+- `--with-texture` : Ajouter la texture au maillage 3D
 
-### 1. `prepare_dataset(...)`
+## 📊 Format des données
 
-- Vérifie que les CSV contiennent `timestamp` et `filename`.
-- Supprime les anciens dossiers `rgb_sync`, `depth_sync`, les fichiers `rtabmap_calib.yaml`, et les anciens CSV.
-- Copie les fichiers dans le dossier de travail.
+### Structure pour les séquences d'images
+Les images doivent être nommées de manière séquentielle ou avec des timestamps.
 
-### 2. `convert_to_timestamps(...)`
-
-- Renomme chaque image en fonction de la colonne `timestamp` du CSV.
-- Gère les doublons ou les timestamps à 0 en ajoutant un léger décalage aléatoire (0.001 à 0.005).
-
-### 3. `main()`
-
-- Lance `rtabmap-rgbd_dataset` avec des paramètres de configuration.
-- Puis exécute `rtabmap-export` pour générer un fichier `.ply`.
-
----
-
-## ⚠️ Validation CSV
-
-Les fichiers CSV doivent avoir **exactement deux colonnes** :  
+### Format CSV pour les timestamps
+Si vous utilisez des timestamps personnalisés, le CSV doit contenir :
 - `timestamp` : nombre (float ou int)
-- `filename` : nom exact de l’image (avec extension)
+- `filename` : nom exact de l'image (avec extension)
 
 Exemple :
-
 ```csv
 timestamp,filename
 1713456011.123456,rgb_001.png
 1713456011.323456,rgb_002.png
 ```
 
-Si ces colonnes ne sont pas présentes, le script s’arrête avec un message d’erreur.
+## 🔧 Paramètres avancés de RTAB-Map
 
----
+Le projet expose plusieurs paramètres RTAB-Map pour les utilisateurs avancés :
+- Paramètres d'odométrie visuelle
+- Options de loop closure
+- Filtrage de nuage de points
+- Paramètres d'optimisation du maillage
 
-## ❗ Attention aux erreurs
+Consultez la documentation RTAB-Map complète pour plus de détails.
 
-- **Colonnes manquantes dans le CSV** :
-  ```
-  [ERREUR] Le fichier 'img_timestamps.csv' doit contenir les colonnes 'timestamp' et 'filename'
-  ```
-- **Fichier de calibration absent** :
-  ```
-  [DELETE] Ancien fichier de calibration supprimé
-  [OK] Nouveau fichier de calibration copié
-  ```
-- **Timestamps dupliqués** :
-  ```
-  [INFO] Adjusted duplicate/zero timestamp for rgb_001.png: 1713456011.128456
-  ```
+## 🧠 Extensions et personnalisations
 
----
+- Intégration d'autres modèles d'estimation de profondeur
+- Filtrage spatial sur le nuage de points généré
+- Support pour différents formats d'image (.jpg, .tiff, etc.)
+- Ajout de logs détaillés
+- Parallélisation des traitements pour améliorer les performances
 
-## 🧠 Personnalisation possible
+## 📜 Licence
 
-- Ajouter des logs dans un fichier.
-- Générer plusieurs `.ply` par séquence.
-- Ajouter un filtre spatial sur le nuage de points généré.
-- Gérer les fichiers `.jpg` ou `.tiff`.
+Ce projet est sous licence MIT.
 
 ---
