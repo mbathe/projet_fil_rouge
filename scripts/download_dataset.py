@@ -39,7 +39,7 @@ def download_dataset_from_drive(file_id, output_directory):
     os.makedirs(output_directory, exist_ok=True)
     url = f'https://drive.google.com/uc?id={file_id}'
 
-    output_zip = os.path.join(output_directory, 'dataset.zip')
+    output_zip = os.path.join(output_directory, 'deer_walk.zip')
 
     try:
         logging.info(f"Téléchargement du fichier depuis : {url}")
