@@ -350,7 +350,7 @@ def export_point_cloud():
                     start_command=start_command,
                     end_command=[f"{output_type}", "--output",
                                  "point", "/rtabmap_ws/output_optimized.db"],
-                    show_progress=False)
+                    show_progress=True)
 
 
 def main():
