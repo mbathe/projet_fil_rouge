@@ -117,6 +117,22 @@ Ce script est automatiquement appelé lorsque le conteneur Docker est exécuté 
 
 ## 🚀 Utilisation
 
+### ⚠️ Chemins absolus obligatoires
+
+**Important** : Comme le programme utilise Docker avec des montages de volumes, tous les chemins doivent être **absolus** et non relatifs. Les chemins relatifs ne fonctionneront pas car Docker nécessite des chemins complets pour monter les volumes correctement.
+
+### Exemple complet avec chemins absolus
+
+```bash
+python3 /home/paul/Cours/projet_fil_rouge/src/main.py \
+  --image_folder "/home/paul/Cours/projet_fil_rouge/data/images" \
+  --depth_folder "/home/paul/Cours/projet_fil_rouge/data/depth" \
+  --calibration_file "/home/paul/Cours/projet_fil_rouge/data/rtabmap_calib.yaml" \
+  --rgb_timestamps "/home/paul/Cours/projet_fil_rouge/data/img_timestamps.csv" \
+  --depth_timestamps "/home/paul/Cours/projet_fil_rouge/data/depth_timestamps.csv" \
+  --output_folder "/home/paul/Cours/projet_fil_rouge/output"
+```
+
 ### Mode vidéo (à partir d'une source vidéo)
 
 ```bash

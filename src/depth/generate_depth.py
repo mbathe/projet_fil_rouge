@@ -1,20 +1,20 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from DepthAnythingV2.metric_depth.depth_anything_v2.dpt import DepthAnythingV2
+from depth.DepthAnythingV2.metric_depth.depth_anything_v2.dpt import DepthAnythingV2
 from PIL import Image
 import torch
 import cv2
 import sys
 import os
 import shutil  # Added import for directory operations
-sys.path.append(os.path.abspath("Depth-Anything-V2"))
+sys.path.append(os.path.abspath("src"))
 
 # Load model once globally for efficiency
 model = DepthAnythingV2(encoder='vits', features=64,
                         out_channels=[48, 96, 192, 384])
 model.load_state_dict(torch.load(
-    './weight/depth_anything_v2_metric_hypersim_vits.pth', map_location='cpu'))
+    './weight/depth_anything_v2_metric_hypersim_vits.pth', map_location='cpu',  weights_only=True))
 model.eval()
 device = torch.device(
     "cuda" if torch.cuda.is_available()
