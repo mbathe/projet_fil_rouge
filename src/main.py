@@ -229,7 +229,7 @@ def parse_arguments() -> argparse.Namespace:
                         help="Dossier contenant les images avec profondeur")
     parser.add_argument("--calibration_file", type=str,
                         default=os.path.join(
-                            PROJECT_ROOT, "data/rtabmap_calib.yaml"),
+                            PROJECT_ROOT, "data/dataset/deer_walk/rtabmap_calib.yaml"),
                         help="Chemin vers le fichier de calibration")
     parser.add_argument("--rgb_timestamps", type=str,
                         default=os.path.join(

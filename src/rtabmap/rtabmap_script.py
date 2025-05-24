@@ -17,7 +17,7 @@ load_dotenv()
 # Default paths - configurable via parameters
 
 
-
+SHOW_PROGRESS = True  # Set to False to disable progress bars
 RTABMAB_DOCKER_ROOT =os.getenv("RTABMAB_DOCKER_ROOT")
 RGB_PATH = f"{RTABMAB_DOCKER_ROOT}/rgb_sync"
 DEPTH_PATH = f"{RTABMAB_DOCKER_ROOT}/depth_sync"
@@ -314,7 +314,7 @@ def generate_db():
     execute_command(GENERATE_DB_PARAMS_FILES,
                     start_command=["rtabmap-rgbd_dataset"],
                     end_command=["--output_path", "/rtabmap_ws"],
-                    show_progress=True)
+                    show_progress=SHOW_PROGRESS)
     
    
 
@@ -333,7 +333,7 @@ def reprocess():
                     start_command=["rtabmap-reprocess"],
                     end_command=["/rtabmap_ws/rtabmap.db",
                                  "output_optimized.db"],
-                    show_progress=True)
+                    show_progress=SHOW_PROGRESS)
 
 def export_point_cloud():
     """
@@ -350,7 +350,7 @@ def export_point_cloud():
                     start_command=start_command,
                     end_command=[f"{output_type}", "--output",
                                  "point", "/rtabmap_ws/output_optimized.db"],
-                    show_progress=True)
+                    show_progress=SHOW_PROGRESS)
 
 
 def main():
