@@ -2,7 +2,7 @@
 
 
 
-![](https://github.com/mbathe/projet_fil_rouge/blob/main/deer_walk_3dmap.png)
+![](https://github.com/mbathe/projet_fil_rouge/blob/main/data/deer_walk_3dmap.png)
 
 ## 📋 Aperçu du projet
 
