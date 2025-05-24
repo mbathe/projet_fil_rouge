@@ -179,4 +179,5 @@ dataset/
 data/
 old/
 depth/DepthAnythingV2/
+weight/
 
