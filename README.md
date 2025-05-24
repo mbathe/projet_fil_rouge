@@ -145,7 +145,18 @@ python3 <PROJECT_ROOT>/src/main.py \
   --output_folder "<PROJECT_ROOT>/output"
 ```
 
-Par exemple, si votre projet est situé dans `/home/utilisateur/cartographie3d`, tous les chemins doivent commencer par cette racine.
+Par exemple, si votre projet est situé dans `/home/utilisateur/cartographie3d`, tous les chemins doivent commencer par 
+cette racine.
+
+
+### Utiliser les données de test deer_walk
+
+Si vous avez exécuté la commande ci-dessus pour télécharger le jeu de données de test, alors vous pouvez exécuter la commande ci-dessous pour générer la cartographie à partir de ce jeu de données. À noter que le fichier de base de données et les fichiers mesh ou cloud générés se trouvent dans le répertoire ./output du dossier racine.
+
+```bash
+python3 /home/paul/Cours/projet_fil_rouge/src/main.py
+```
+
 
 ### Mode vidéo (à partir d'une source vidéo)
 
