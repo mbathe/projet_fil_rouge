@@ -70,6 +70,10 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+deer_walk/
+output/
+DepthAnythingV2/
+
 
 # PyBuilder
 .pybuilder/
@@ -172,3 +176,7 @@ cython_debug/
 
 dataset/
 dataset/
+data/
+old/
+depth/DepthAnythingV2/
+
