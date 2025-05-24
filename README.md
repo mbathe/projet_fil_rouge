@@ -1,5 +1,9 @@
 # Projet de Cartographie 3D avec RTAB-Map
 
+
+
+![Texte alternatif](URL_de_l_image)
+
 ## 📋 Aperçu du projet
 
 Ce projet permet de générer une cartographie 3D à partir de différentes sources d'entrée :
