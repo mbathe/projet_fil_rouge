@@ -82,12 +82,12 @@ Main steps:
 
 ### Environment Setup
 
-1. **Install Python dependencies**:
+#### 1. **Install Python dependencies**:
 ```bash
 pip install -r requirements.txt
 ```
 
-1. **Automatic Download of Depth Anything V2**
+#### 2. **Automatic Download of Depth Anything V2**
 
 The Python script (`download_depth_anything.py`) allows you to automatically download the official **Depth Anything V2** repository as well as the associated model weights.
 
@@ -110,7 +110,7 @@ The Python script (`download_depth_anything.py`) allows you to automatically dow
 
 
 
-3. **Download the test dataset**:
+#### 3. **Download the test dataset**:
 
 Run the following command at the project root to download the deer_walk test image dataset to ./data/deer_walk/ (set by the DIR_DATASET environment variable):
 ```bash
