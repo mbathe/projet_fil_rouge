@@ -8,13 +8,26 @@ import cv2
 import sys
 import os
 import shutil  # Added import for directory operations
+from dotenv import load_dotenv
+
+
+load_dotenv()
+# Peut être 'small', 'base' ou 'large'
+DEPTH_ANYTHING_TYPE = os.getenv("DEPTH_ANYTHING_TYPE", "base")
+
 sys.path.append(os.path.abspath("src"))
+checkpoints_dir = "checkpoints"
+model_file = checkpoints_dir / "depth_anything_v2_vitb.pth" if DEPTH_ANYTHING_TYPE == "base" else (
+    checkpoints_dir / "depth_anything_v2_vits.pth" if DEPTH_ANYTHING_TYPE == "small" else checkpoints_dir /
+    "depth_anything_v2_vitl.pth"
+)
+
 
 # Load model once globally for efficiency
 model = DepthAnythingV2(encoder='vits', features=64,
                         out_channels=[48, 96, 192, 384])
-model.load_state_dict(torch.load(
-    './weight/depth_anything_v2_metric_hypersim_vits.pth', map_location='cpu',  weights_only=True))
+model.load_state_dict(torch.load(model_file,
+                      map_location='cpu',  weights_only=True))
 model.eval()
 device = torch.device(
     "cuda" if torch.cuda.is_available()

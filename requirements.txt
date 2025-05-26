@@ -1,1 +1,11 @@
-pip install gdown
+pandas
+tqdm
+python-dotenv
+torch
+torchvision
+torchaudio
+Pillow
+matplotlib
+numpy
+
+
