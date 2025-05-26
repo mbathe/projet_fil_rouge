@@ -1,13 +1,15 @@
-import time
+# fmt: off
+# isort: skip_file
+import shutil
 import numpy as np
+import time
 import matplotlib.pyplot as plt
-from DepthAnythingV2.metric_depth.depth_anything_v2.dpt import DepthAnythingV2
-from PIL import Image
-import torch
 import cv2
-import sys
+import torch
+from PIL import Image
 import os
-import shutil  # Added import for directory operations
+from .DepthAnythingV2.metric_depth.depth_anything_v2.dpt import DepthAnythingV2
+# fmt: on
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -15,30 +17,39 @@ load_dotenv()
 # Peut être 'small', 'base' ou 'large'
 DEPTH_ANYTHING_TYPE = os.getenv("DEPTH_ANYTHING_TYPE", "base")
 
-sys.path.append(os.path.abspath("src"))
+
 checkpoints_dir = Path(__file__).parent.resolve() / \
     "DepthAnythingV2" / "checkpoints"
+
+
 model_file = checkpoints_dir / "depth_anything_v2_vitb.pth" if DEPTH_ANYTHING_TYPE == "base" else (
     checkpoints_dir / "depth_anything_v2_vits.pth" if DEPTH_ANYTHING_TYPE == "small" else checkpoints_dir /
     "depth_anything_v2_vitl.pth"
 )
 
 
-# Load model once globally for efficiency
-model = DepthAnythingV2(encoder='vits', features=64,
-                        out_channels=[48, 96, 192, 384])
-model.load_state_dict(torch.load(model_file,
-                      map_location='cpu',  weights_only=True))
-model.eval()
-device = torch.device(
-    "cuda" if torch.cuda.is_available()
-    else "mps" if torch.backends.mps.is_available()
-    else "cpu"
+device = 'cuda' if torch.cuda.is_available(
+) else 'mps' if torch.backends.mps.is_available() else 'cpu'
+
+
+model_configs = {
+    'vits': {'encoder': 'vits', 'features': 64, 'out_channels': [48, 96, 192, 384]},
+    'vitb': {'encoder': 'vitb', 'features': 128, 'out_channels': [96, 192, 384, 768]},
+    'vitl': {'encoder': 'vitl', 'features': 256, 'out_channels': [256, 512, 1024, 1024]},
+    'vitg': {'encoder': 'vitg', 'features': 384, 'out_channels': [1536, 1536, 1536, 1536]}
+}
+
+encoder = "vitb" if DEPTH_ANYTHING_TYPE == "base" else (
+    "vits" if DEPTH_ANYTHING_TYPE == "small" else "vitl"
 )
-model.to(device)
+
+depth_anything = DepthAnythingV2(**model_configs[encoder])
+depth_anything.load_state_dict(torch.load(
+    f'{model_file}', map_location='cpu', weights_only=True))
+model = depth_anything.to(device).eval()
 
 
-def generate_depth_maps(image_folder, output_folder, image_extensions=(".png", ".jpg", ".jpeg")):
+def generate_depth_maps(image_folder, output_folder, image_extensions=(".png", ".jpg", ".jpeg"), output_extension=".tiff"):
     """
     Generate depth maps for all images in the specified folder and save them as TIFF files.
     
@@ -98,7 +109,8 @@ def generate_depth_maps(image_folder, output_folder, image_extensions=(".png", "
         
         # Save output
         original_filename = os.path.splitext(os.path.basename(image_path))[0]
-        output_path = os.path.join(output_folder, f"{original_filename}.tiff")
+        output_path = os.path.join(
+            output_folder, f"{original_filename}.{output_extension.lstrip('.').lower()}")
         cv2.imwrite(output_path, heatmap_resized)
         
         if (idx + 1) % 10 == 0 or idx == len(image_files) - 1:
@@ -130,7 +142,27 @@ def generate_depth_maps(image_folder, output_folder, image_extensions=(".png", "
 # Example usage
 if __name__ == "__main__":
     # These can be replaced with command line arguments if needed
-    input_folder = "../deer_walk/cam0/data/"
-    output_folder = "../dear_walk_DAV2_metrice/"
-    
-    generate_depth_maps(input_folder, output_folder)
+
+    # Chemin du dossier à créer
+
+    script_dir = Path(__file__).parent.resolve()
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    output_dir = os.path.join(os.path.dirname(
+        os.path.dirname(script_dir)), "output")
+
+    data_dir = os.path.join(os.path.dirname(
+        os.path.dirname(script_dir)), "data")
+
+    input_dir = os.path.join(os.path.join(os.path.join(
+        data_dir, 'dataset'), "deer_walk"), "images")
+
+    output_dir = os.path.join(os.path.join(
+        output_dir, 'depth'), "images")
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    print(output_dir)
+
+    generate_depth_maps(input_dir, output_dir)

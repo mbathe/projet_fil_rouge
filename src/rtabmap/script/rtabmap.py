@@ -15,17 +15,21 @@ from tqdm import tqdm
 load_dotenv()
 
 # Default paths - configurable via parameters
-
-
+RTABMAB_DOCKER_ROOT = "/rtabmap_ws"
 SHOW_PROGRESS = True  # Set to False to disable progress bars
-RTABMAB_DOCKER_ROOT =os.getenv("RTABMAB_DOCKER_ROOT")
 RGB_PATH = f"{RTABMAB_DOCKER_ROOT}/rgb_sync"
 DEPTH_PATH = f"{RTABMAB_DOCKER_ROOT}/depth_sync"
 IMG_TIMESTAMPS = "img_timestamps.csv"
 DEPTH_TIMESTAMPS = "depth_timestamps.csv"
-EXPORT_PARAMS_FILES = f"{RTABMAB_DOCKER_ROOT}/rtabmap_params/export_params.json"
-GENERATE_DB_PARAMS_FILES = f"{RTABMAB_DOCKER_ROOT}/rtabmap_params/generate_db_params.json"
-REPROCESS_PARAMS_FILES = f"{RTABMAB_DOCKER_ROOT}/rtabmap_params/reprocess_params.json"
+EXPORT_PARAMS_FILES = f"{RTABMAB_DOCKER_ROOT}/export_params.json"
+GENERATE_DB_PARAMS_FILES = f"{RTABMAB_DOCKER_ROOT}/db_params.json"
+REPROCESS_PARAMS_FILES = f"{RTABMAB_DOCKER_ROOT}/reprocess_params.json"
+
+
+
+
+
+
 
 
 def convert_to_timestamps(img_path=None, depth_path=None, img_timestamps_path=None, depth_timestamps_path=None):
@@ -169,7 +173,6 @@ def prepare_dataset(rgb_dir, depth_dir, calib_file, rgb_timestamps, depth_timest
     for ext in ['*.png', '*.jpg', '*.jpeg', '*.tiff', '*.tif']:
         depth_files.extend(glob.glob(os.path.join(depth_dir, ext)))
 
-    # Copie des fichiers de profondeur avec barre de progression
     if depth_files:
         print(f"[INFO] Copie de {len(depth_files)} images de profondeur...")
         for src in tqdm(depth_files, desc="Copie Depth", unit="img"):
@@ -213,7 +216,6 @@ def execute_command(config_file, start_command=[], end_command=[], show_progress
 
             # Rediriger toute la sortie vers le fichier temporaire
             with open(temp_output_file, 'w') as f:
-                # Exécuter la commande avec redirection de sortie
                 process = subprocess.Popen(
                     full_command,
                     stdout=f,
@@ -221,24 +223,18 @@ def execute_command(config_file, start_command=[], end_command=[], show_progress
                     text=True
                 )
 
-            # Initialiser la barre de progression sans valeur totale pour le moment
             pbar = tqdm(desc="Initialisation...", unit="iter", ncols=100)
 
-            # Expressions régulières pour extraire les informations de progression
             iter_pattern = re.compile(r'(?:Iteration|Processed) (\d+)/(\d+)')
 
-            # Variables pour suivre la progression
             total_iters = None
             last_iter = 0
 
-            # Surveiller le fichier de sortie pendant que le processus s'exécute
-            while process.poll() is None:  # Tant que le processus est en cours d'exécution
-                # Lire le fichier de sortie
+            while process.poll() is None:
                 try:
                     with open(temp_output_file, 'r') as f:
                         content = f.read()
 
-                    # Trouver la dernière itération mentionnée
                     matches = list(iter_pattern.finditer(content))
                     if matches:
                         latest_match = matches[-1]
@@ -249,7 +245,6 @@ def execute_command(config_file, start_command=[], end_command=[], show_progress
                             pbar.reset(total=total_iters)
                             pbar.set_description(f"Traitement RTAB-Map")
 
-                        # Extraire les informations supplémentaires
                         last_line = content.splitlines()[-1] if content else ""
                         info_match = re.search(
                             r'Iteration|Processed \d+/\d+: (.+)', last_line)
@@ -257,30 +252,23 @@ def execute_command(config_file, start_command=[], end_command=[], show_progress
                             last_info = info_match.group(1)
                             pbar.set_description(f"RTAB-Map [{last_info}]")
 
-                        # Mettre à jour la barre de progression
                         if current_iter > last_iter:
                             pbar.update(current_iter - last_iter)
                             last_iter = current_iter
                 except Exception as e:
-                    # Ignorer les erreurs de lecture du fichier
                     pass
 
-                # Pause pour éviter une utilisation excessive du CPU
                 import time
                 time.sleep(0.1)
 
-            # Fermer la barre de progression
             pbar.close()
 
-            # Vérifier le code de retour du processus
             if process.returncode != 0:
                 print(
                     f"La commande a échoué avec le code de retour {process.returncode}")
-
-                # Afficher les dernières lignes du fichier de sortie en cas d'erreur
                 try:
                     with open(temp_output_file, 'r') as f:
-                        last_lines = f.readlines()[-20:]  # Dernières 20 lignes
+                        last_lines = f.readlines()[-20:]
                         print("Dernières lignes de la sortie:")
                         for line in last_lines:
                             print(line.strip())
@@ -289,7 +277,6 @@ def execute_command(config_file, start_command=[], end_command=[], show_progress
             else:
                 print("Traitement RTAB-Map terminé avec succès!")
 
-            # Supprimer le fichier temporaire
             try:
                 os.remove(temp_output_file)
             except:
@@ -335,7 +322,8 @@ def reprocess():
                                  "output_optimized.db"],
                     show_progress=SHOW_PROGRESS)
 
-def export_point_cloud():
+
+def export_point_cloud(output_type="--cloud"):
     """
     Export the point cloud from the RTAB-Map database.
     Args:
@@ -343,57 +331,72 @@ def export_point_cloud():
         output_type: Type of output (e.g., mesh, cloud)
     """
     print("\n===== Exportation du nuage de points =====")
-    output_type = "--cloud"  # Change to "--cloud" for point cloud export
+    
+    print("TYPE DE SORTIE:", output_type)
     start_command = ["rtabmap-export"]
     
     execute_command(EXPORT_PARAMS_FILES,
                     start_command=start_command,
-                    end_command=[f"{output_type}", "--output",
-                                 "point", "/rtabmap_ws/output_optimized.db"],
+                    end_command=[f"{output_type}",  "--output", "point",
+                                 "/rtabmap_ws/output_optimized.db"],
                     show_progress=SHOW_PROGRESS)
 
 
-def main():
+
+
+
+
+def main(config):
+
+   
+
     """Run RTAB-Map processing on the dataset."""
     
     output_type = "--mesh" # Exporter un mesh vous pouvez changer en "--cloud" pour exporter un nuage de points
     generate_db()
-    reprocess()
-    export_point_cloud()
+    if config.get("reprocess", True):
+        reprocess()
+    export_point_cloud(output_type=config.get("export_format", output_type))
 
    
 
 if __name__ == "__main__":
-    if len(sys.argv) != 1:
-        print("Usage: python script.py")
-        print("All paths are currently hardcoded in the script.")
-        sys.exit(1)
-    else:
-        rgb_path = "/rtabmap_ws/rgb_sync"
-        depth_path = "/rtabmap_ws/depth_sync"
-        
-        rgb_path_from = "/rtabmap_ws/rgb_sync_docker"
-        depth_path_from = "/rtabmap_ws/depth_sync_docker"
-        
-        calib_path = "rtabmap_calib.yaml"
-        rgb_timestamps = "img_timestamps.csv"
-        depth_timestamps = "depth_timestamps.csv"
-        
-        print("===== Preparing Dataset =====")
-        prepare_dataset(rgb_path_from, depth_path_from, calib_path, rgb_timestamps, depth_timestamps)
-        
-        print("\n===== Converting to Timestamps =====")
-        convert_to_timestamps(
-            img_path=rgb_path, 
-            depth_path=DEPTH_PATH,  
-            img_timestamps_path=rgb_timestamps, 
-            depth_timestamps_path=depth_timestamps
-        )
-        main()
-        print("\n===== Copying Results =====")
-        os.makedirs("/rtabmap_ws/output", exist_ok=True)
-        shutil.copy2("/rtabmap_ws/output_optimized.db", "/rtabmap_ws/output/rtabmap.db")
-        shutil.copy2("/rtabmap_ws/point_cloud.ply", "/rtabmap_ws/output/point_cloud.ply")
-        print("Processing complete! Results saved to /rtabmap_ws/output/")
+
+    print(sys.argv)
+
+    config = load_config("/rtabmap_ws/config.json")
+    extension = "cloud" if config.get("export_format", "--cloud")=="--cloud" else "mesh"
+    rgb_path = "/rtabmap_ws/rgb_sync"
+    depth_path = "/rtabmap_ws/depth_sync"
+
+    rgb_path_from = "/rtabmap_ws/rgb_sync_docker"
+    depth_path_from = "/rtabmap_ws/depth_sync_docker"
+
+    calib_path = "rtabmap_calib.yaml"
+    rgb_timestamps = "img_timestamps.csv"
+    depth_timestamps = "depth_timestamps.csv"
+
+    print("===== Preparing Dataset =====")
+    prepare_dataset(rgb_path_from, depth_path_from, calib_path,
+                    rgb_timestamps, depth_timestamps)
+
+    print("\n===== Converting to Timestamps =====")
+    convert_to_timestamps(
+        img_path=rgb_path,
+        depth_path=DEPTH_PATH,
+        img_timestamps_path=rgb_timestamps,
+        depth_timestamps_path=depth_timestamps
+    )
+    main(config)
+    
+    print("\n===== Copying Results =====")
+    os.makedirs("/rtabmap_ws/output/rtabmap", exist_ok=True)
+    shutil.copy2("/rtabmap_ws/output_optimized.db",
+                 "/rtabmap_ws/output/rtabmap/rtabmap.db")
+    shutil.copy2(f"/rtabmap_ws/point_{extension}.ply",
+                 f"/rtabmap_ws/output/rtabmap/point_{extension}.ply")
+    print("Processing complete! Results saved to /output/rtabmap/")
+    
+    
 
 

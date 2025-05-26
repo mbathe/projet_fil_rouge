@@ -13,8 +13,9 @@ import logging
 import argparse
 from typing import Dict, List, Optional, Tuple, Any
 from pathlib import Path
+import json
 
-# Import des modules du projet
+# Import des mprojetodules du
 try:
     from depth.generate_depth import generate_depth_maps
 except ImportError as e:
@@ -36,6 +37,17 @@ logger = logging.getLogger("cartographie3d")
 # Déterminer le répertoire racine du projet
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+RTABMAP_CONFIG_FILE = os.path.join(os.path.join(
+    PROJECT_ROOT, "src"), "rtabmap_config.json")
+
+RTABMAP_PARAMS = os.path.join(os.path.join(os.path.join(
+    PROJECT_ROOT, "src"), "rtabmap"), "params")
+
+
+export_params_file = os.path.join(RTABMAP_PARAMS, "export_params.json")
+db_params_file = os.path.join(RTABMAP_PARAMS, "db_params.json")
+reprocess_params_file = os.path.join(RTABMAP_PARAMS, "reprocess_params.json")
+
 
 
 class CartographieError(Exception):
@@ -187,8 +199,12 @@ class RTAB3DMapper:
             "-v", f"{self.args.depth_folder}:/rtabmap_ws/depth_sync_docker",
             "-v", f"{self.args.rgb_timestamps}:/rtabmap_ws/img_timestamps.csv",
             "-v", f"{self.args.depth_timestamps}:/rtabmap_ws/depth_timestamps.csv",
-            "-v", f"{self.args.output_folder}:/rtabmap_ws/output",
+            "-v", f"{self.args.output_folder}:/rtabmap_ws/output/rtabmap",
             "-v", f"{self.args.calibration_file}:/rtabmap_ws/rtabmap_calib.yaml",
+            "-v", f"{export_params_file}:/rtabmap_ws/export_params.json",
+            "-v", f"{db_params_file}:/rtabmap_ws/db_params.json",
+            "-v", f"{reprocess_params_file}:/rtabmap_ws/reprocess_params.json",
+            "-v", f"{RTABMAP_CONFIG_FILE}:/rtabmap_ws/config.json",
             "rtabmap_ubuntu20"
         ]
         return command
@@ -204,6 +220,14 @@ class RTAB3DMapper:
                 logger.info(f"Fichier généré: {file} ({file_size:.2f} MB)")
             else:
                 logger.warning(f"Fichier attendu non trouvé: {file}")
+
+
+def write_config(config):
+
+    os.makedirs(os.path.dirname(RTABMAP_CONFIG_FILE), exist_ok=True)
+    with open(RTABMAP_CONFIG_FILE, 'w') as f:
+        json.dump(config, f)
+
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -239,10 +263,6 @@ def parse_arguments() -> argparse.Namespace:
                         default=os.path.join(
                             PROJECT_ROOT, "data/dataset/deer_walk/depth_timestamps.csv"),
                         help="Chemin vers le fichier de timestamps profondeur")
-    parser.add_argument("--output_folder", type=str,
-                        default=os.path.join(PROJECT_ROOT, "output"),
-                        help="Dossier de sortie")
-
     # Paramètres de traitement
     parser.add_argument("--source", type=str,
                         choices=["image", "image_with_depth", "video"],
@@ -254,19 +274,46 @@ def parse_arguments() -> argparse.Namespace:
     # Paramètres avancés
     parser.add_argument("--debug", action="store_true",
                         help="Active les messages de débogage détaillés")
+
+    parser.add_argument("--reprocess", type=bool, default=True,
+                        help="Reprocessus les données existantes (par défaut: False)")
+
+    parser.add_argument("--output_folder", type=str,
+                        default=os.path.join(PROJECT_ROOT, "output/rtabmap"),
+                        help="Dossier de sortie pour les résultats de cartographie 3D")
+
     parser.add_argument("--export_format", type=str,
-                        choices=["ply", "obj", "both"],
-                        default="ply",
+                        choices=["--cloud", "--mesh"],
+                        default="--mesh",
                         help="Format d'exportation du nuage de points")
 
     return parser.parse_args()
 
 
+def create_directory_if_not_exists(directory):
+    path = Path(directory)
+    if not path.exists():
+        path.mkdir(parents=True, exist_ok=True)
+
+
+
+
 def main():
     """Point d'entrée principal du programme."""
     try:
+
+        create_directory_if_not_exists(os.path.join(
+            os.path.join(PROJECT_ROOT, "output"), "rtabmap"))
+
         # Parsing des arguments
         args = parse_arguments()
+
+        rtabmapconfig = {
+            "reprocess": args.reprocess,
+            "export_format": args.export_format
+        }
+
+        write_config(rtabmapconfig)
 
         # Configuration du niveau de log
         if args.debug:

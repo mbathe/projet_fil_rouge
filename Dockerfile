@@ -70,7 +70,7 @@ RUN git clone https://github.com/introlab/rtabmap.git && \
 
 # 9. Copie de ton script Python dans le conteneur
 WORKDIR /rtabmap_ws
-COPY ./src/rtabmap/ /rtabmap_ws/
+COPY ./src/rtabmap/script/ /rtabmap_ws/
 
 # 10. Commande par défaut : exécute ton script Python
 
@@ -87,4 +87,4 @@ ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 
 
 
-CMD ["python3", "/rtabmap_ws/rtabmap_script.py"]
+CMD ["python3", "/rtabmap_ws/rtabmap.py"]
