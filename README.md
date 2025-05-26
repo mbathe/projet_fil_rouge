@@ -87,36 +87,30 @@ Main steps:
 pip install -r requirements.txt
 ```
 
-2. **Download model weights**:
-```bash
-# The script will automatically download the weights on first run,
-# or you can manually place them in the weights/ folder
-```
-
-3. **Automatic Download of Depth Anything V2**
+1. **Automatic Download of Depth Anything V2**
 
 The Python script (`download_depth_anything.py`) allows you to automatically download the official **Depth Anything V2** repository as well as the associated model weights.
 
 ##### Usage
 
-2.1 **Set the model type**  
+**2.1 Set the model type**  
    Set the `DEPTH_ANYTHING_TYPE` environment variable in the .env file according to the desired model type:  
    - `small`
    - `base` (default)
    - `large`
 
-2.2 **Run the script**  
+**2.2 Run the script**  
    Execute the script from the terminal:
    ```bash
    python scripts/download_depth_anything.py
    ```
 
-2.3 **Follow the instructions**  
+**2.3 Follow the instructions**  
    The script will guide you to choose the destination folder, install dependencies, and download the model weights corresponding to the selected type.
 
 
 
-4. **Download the test dataset**:
+3. **Download the test dataset**:
 
 Run the following command at the project root to download the deer_walk test image dataset to ./data/deer_walk/ (set by the DIR_DATASET environment variable):
 ```bash
