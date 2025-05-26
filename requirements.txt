@@ -1,1 +1,8 @@
-pip install gdown
+pip3 install gdown
+pip3 install pandas
+pip3 install tqdm
+pip3 install python-dotenv
+pip install torch torchvision torchaudio
+pip install Pillow
+pip install matplotlib
+pip install numpy
