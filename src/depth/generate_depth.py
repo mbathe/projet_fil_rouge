@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from depth.DepthAnythingV2.metric_depth.depth_anything_v2.dpt import DepthAnythingV2
+from DepthAnythingV2.metric_depth.depth_anything_v2.dpt import DepthAnythingV2
 from PIL import Image
 import torch
 import cv2
@@ -9,14 +9,15 @@ import sys
 import os
 import shutil  # Added import for directory operations
 from dotenv import load_dotenv
-
+from pathlib import Path
 
 load_dotenv()
 # Peut être 'small', 'base' ou 'large'
 DEPTH_ANYTHING_TYPE = os.getenv("DEPTH_ANYTHING_TYPE", "base")
 
 sys.path.append(os.path.abspath("src"))
-checkpoints_dir = "checkpoints"
+checkpoints_dir = Path(__file__).parent.resolve() / \
+    "DepthAnythingV2" / "checkpoints"
 model_file = checkpoints_dir / "depth_anything_v2_vitb.pth" if DEPTH_ANYTHING_TYPE == "base" else (
     checkpoints_dir / "depth_anything_v2_vits.pth" if DEPTH_ANYTHING_TYPE == "small" else checkpoints_dir /
     "depth_anything_v2_vitl.pth"
