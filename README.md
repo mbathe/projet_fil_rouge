@@ -1,139 +1,135 @@
-# Projet de Cartographie 3D avec RTAB-Map
-
-
+# 3D Mapping Project with RTAB-Map
 
 ![](https://github.com/mbathe/projet_fil_rouge/blob/main/data/deer_walk_3dmap.png)
 
-## 📋 Aperçu du projet
+## 📋 Project Overview
 
-Ce projet permet de générer une cartographie 3D à partir de différentes sources d'entrée :
-- Vidéos (segmentées en images)
-- Images RGB (avec estimation de profondeur)
-- Images RGB-D existantes
+This project enables the generation of a 3D map from various input sources:
+- Videos (split into images)
+- RGB images (with depth estimation)
+- Existing RGB-D images
 
-Le workflow principal consiste à :
-1. **Acquisition des données** : vidéo ou séquence d'images
-2. **Estimation de profondeur** : utilisation du modèle DepthAnythingV2 pour créer des images de profondeur
-3. **Cartographie 3D** : utilisation de RTAB-Map via Docker pour générer un modèle 3D
-4. **Exportation** : nuage de points au format .ply ou mesh pour visualisation et analyse
+The main workflow consists of:
+1. **Data acquisition**: video or image sequence
+2. **Depth estimation**: using the DepthAnythingV2 model to create depth images
+3. **3D mapping**: using RTAB-Map via Docker to generate a 3D model
+4. **Export**: point cloud in .ply or mesh format for visualization and analysis
 
-## 🔍 Technologies clés
+## 🔍 Key Technologies
 
-- **RTAB-Map** (Real-Time Appearance-Based Mapping) : Framework de SLAM pour la cartographie 3D
-- **DepthAnythingV2** : Modèle de deep learning pour l'estimation de profondeur à partir d'images RGB
-- **Docker** : Conteneurisation des dépendances complexes
-- **Python** : Orchestration du pipeline complet
+- **RTAB-Map** (Real-Time Appearance-Based Mapping): SLAM framework for 3D mapping
+- **DepthAnythingV2**: Deep learning model for depth estimation from RGB images
+- **Docker**: Containerization of complex dependencies
+- **Python**: Orchestration of the complete pipeline
 
-## 🏗️ Architecture du projet
+## 🏗️ Project Structure
 
 ```
-projet/
-├── data/                  # Données d'exemple
-├── notebook/              # Notebooks d'expérimentation
+project/
+├── data/                  # Example data
+├── notebook/              # Experimentation notebooks
 ├── src/
-│   ├── depth/             # Code pour l'estimation de profondeur
-│   ├── rtabmap/           # Code pour la génération de cartographie 3D
-│   └── main.py            # Point d'entrée de l'application
-├── output/                # Base de données RTAB-Map, fichiers mesh et cloud
-├── weight/                # Poids des modèles de deep learning
-└── scripts/               # Scripts utilitaires
+│   ├── depth/             # Depth estimation code
+│   ├── rtabmap/           # 3D mapping code
+│   └── main.py            # Application entry point
+├── output/                # RTAB-Map database, mesh and cloud files
+├── weight/                # Deep learning model weights
+└── scripts/               # Utility scripts
 ```
 
-## 📦 Modules principaux
+## 📦 Main Modules
 
-### 1. Estimation de profondeur
-- Utilise le modèle **DepthAnythingV2** pour générer des cartes de profondeur à partir d'images RGB
-- Traite soit des images individuelles, soit extrait des frames d'une vidéo
-- Calibre et normalise les données de profondeur pour RTAB-Map
+### 1. Depth Estimation
+- Uses the **DepthAnythingV2** model to generate depth maps from RGB images
+- Processes either individual images or extracts frames from a video
+- Calibrates and normalizes depth data for RTAB-Map
 
-### 2. Cartographie RTAB-Map
-- Utilise les paires RGB-D pour construire une représentation 3D
-- Génère une base de données de l'environnement avec informations de localisation
-- Exécute les algorithmes de SLAM pour aligner les images dans l'espace 3D
+### 2. RTAB-Map 3D Mapping
+- Uses RGB-D pairs to build a 3D representation
+- Generates a database of the environment with localization information
+- Runs SLAM algorithms to align images in 3D space
 
-### 3. Exportation et visualisation
-- Génère des nuages de points 3D (.ply)
-- Crée des maillages 3D (mesh)
-- Offre des options de projection 2D du modèle 3D
+### 3. Export and Visualization
+- Generates 3D point clouds (.ply)
+- Creates 3D meshes
+- Offers 2D projection options of the 3D model
 
-## 🛠️ Installation et configuration
+## 🛠️ Installation and Setup
 
-### Prérequis
+### Prerequisites
 - Python 3.8+
 - Docker
-- GPU recommandé pour l'inférence du modèle de profondeur
+- GPU recommended for depth model inference
 
-### Installation de Docker
+### Docker Installation
 
-Pour installer Docker, veuillez suivre la documentation officielle de Docker correspondant à votre système d'exploitation :
-- **Site d'installation officiel** : [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
-- Choisissez votre distribution Linux, ou Windows/macOS selon votre système
+To install Docker, follow the official Docker documentation for your operating system:
+- **Official installation site**: [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
+- Choose your Linux distribution, or Windows/macOS as appropriate
 
-### Configuration de Docker sans sudo (important)
+### Docker Without Sudo (important)
 
-⚠️ **IMPORTANT** : Comme Docker est invoqué directement depuis le code Python de ce projet, il est **crucial** de configurer Docker pour qu'il fonctionne sans sudo sur les systèmes Linux. Sans cette configuration, les scripts Python ne pourront pas exécuter les commandes Docker correctement.
+⚠️ **IMPORTANT**: Since Docker is invoked directly from the Python code, it is **crucial** to configure Docker to run without sudo on Linux systems. Without this, the Python scripts will not be able to execute Docker commands properly.
 
-Suivez les instructions de post-installation pour votre plateforme :
-- **Documentation post-installation** : [https://docs.docker.com/engine/install/linux-postinstall/](https://docs.docker.com/engine/install/linux-postinstall/)
+Follow the post-installation instructions for your platform:
+- **Post-install documentation**: [https://docs.docker.com/engine/install/linux-postinstall/](https://docs.docker.com/engine/install/linux-postinstall/)
 
-Les étapes principales sont :
-1. Ajouter votre utilisateur au groupe Docker
-2. Appliquer les changements de groupe
-3. Vérifier l'installation sans sudo
-4. Configurer Docker pour démarrer au boot
+Main steps:
+1. Add your user to the Docker group
+2. Apply group changes
+3. Verify installation without sudo
+4. Set Docker to start on boot
 
-### Configuration de l'environnement
+### Environment Setup
 
-1. **Installation des dépendances Python** :
+1. **Install Python dependencies**:
 ```bash
 pip install -r requirements.txt
 ```
 
-2. **Téléchargement des poids du modèle** :
+2. **Download model weights**:
 ```bash
-# Le script téléchargera automatiquement les poids lors de la première exécution
-# ou vous pouvez les télécharger manuellement dans le dossier weights/
+# The script will automatically download the weights on first run,
+# or you can manually place them in the weights/ folder
 ```
 
-1. **Télécharger le dataset de test**  :
+3. **Download the test dataset**:
 
-
-Exécutez la commande suivante à la racine du projet pour télécharger le jeu de données d'images deer_walk de test  ./data/deer_walk/ (défini par la variable d'environnement DIR_DATASET).
+Run the following command at the project root to download the deer_walk test image dataset to ./data/deer_walk/ (set by the DIR_DATASET environment variable):
 ```bash
- python scripts/download_dataset.py
-
+python scripts/download_dataset.py
 ```
 
-### Construction de l'image Docker personnalisée
+### Build the Custom Docker Image
 
-Le projet utilise une image Docker personnalisée qui contient RTAB-Map et les scripts nécessaires pour la génération de cartographie 3D.
+The project uses a custom Docker image that contains RTAB-Map and the necessary scripts for 3D mapping.
 
-⚠️ **IMPORTANT** : Avant d'exécuter le programme principal, vous devez construire l'image Docker :
+⚠️ **IMPORTANT**: Before running the main program, you must build the Docker image:
 
 ```bash
 sudo docker build -t rtabmap_ubuntu20 .
 ```
 
-Le `Dockerfile` à la racine du projet contient les instructions pour :
-1. Construire l'image Docker avec RTAB-Map et toutes les dépendances nécessaires
-2. Injecter le script `./src/rtabmap/rtabmap_script.py` dans l'image
-3. Configurer l'environnement d'exécution pour la cartographie 3D
+The `Dockerfile` at the project root:
+1. Builds the Docker image with RTAB-Map and all required dependencies
+2. Injects the script `./src/rtabmap/rtabmap_script.py` into the image
+3. Sets up the runtime environment for 3D mapping
 
-Ce script est automatiquement appelé lorsque le conteneur Docker est exécuté depuis le code Python, et il prend en charge la génération de la cartographie 3D.
+This script is automatically called when the Docker container is run from the Python code and handles the 3D mapping process.
 
-**Note** : Il n'est pas nécessaire d'installer RTAB-Map séparément ou de télécharger une autre image Docker, car le Dockerfile configure tout ce qui est nécessaire.
+**Note**: You do not need to install RTAB-Map separately or download another Docker image, as the Dockerfile sets up everything required.
 
-**Note** : Chaque fois que vous modifiez le contenu du répertoire `./src/rtabmap/`, vous devez reconstruire l'image Docker pour que les changements soient pris en compte.
+**Note**: Every time you modify the contents of the `./src/rtabmap/` directory, you must rebuild the Docker image for changes to take effect.
 
-## 🚀 Utilisation
+## 🚀 Usage
 
-### ⚠️ Chemins absolus obligatoires
+### ⚠️ Absolute Paths Required
 
-**Important** : Comme le programme utilise Docker avec des montages de volumes, tous les chemins doivent être **absolus** et non relatifs. Les chemins relatifs ne fonctionneront pas car Docker nécessite des chemins complets pour monter les volumes correctement.
+**Important**: Since the program uses Docker with volume mounts, all paths must be **absolute** and not relative. Relative paths will not work because Docker requires full paths to mount volumes correctly.
 
-Dans les exemples ci-dessous, remplacez `<PROJECT_ROOT>` par le chemin absolu vers la racine de votre projet.
+In the examples below, replace `<PROJECT_ROOT>` with the absolute path to your project root.
 
-### Exemple complet avec chemins absolus
+### Full Example with Absolute Paths
 
 ```bash
 python3 <PROJECT_ROOT>/src/main.py \
@@ -145,131 +141,128 @@ python3 <PROJECT_ROOT>/src/main.py \
   --output_folder "<PROJECT_ROOT>/output"
 ```
 
-Par exemple, si votre projet est situé dans `/home/utilisateur/cartographie3d`, tous les chemins doivent commencer par 
-cette racine.
+For example, if your project is located at `/home/user/cartographie3d`, all paths should start with that root.
 
+### Using the deer_walk Test Data
 
-### Utiliser les données de test deer_walk
-
-Si vous avez exécuté la commande ci-dessus pour télécharger le jeu de données de test, alors vous pouvez exécuter la commande ci-dessous pour générer la cartographie à partir de ce jeu de données. À noter que le fichier de base de données et les fichiers mesh ou cloud générés se trouvent dans le répertoire ./output du dossier racine.
+If you have run the above command to download the test dataset, you can then run the command below to generate the map from this dataset. Note that the database file and generated mesh or cloud files will be in the ./output directory at the project root.
 
 ```bash
 python3 /home/paul/Cours/projet_fil_rouge/src/main.py
 ```
 
-
-### Mode vidéo (à partir d'une source vidéo)
-
-```bash
-python src/main.py --source video --images_folder ./chemin/vers/la/video.mp4 --output_folder ./output_folder --frequence 5
-```
-
-### Mode images (RGB sans profondeur)
+### Video Mode (from a video source)
 
 ```bash
-python src/main.py --source image --images_folder ./chemin/vers/images --output_folder ./output_folder
+python src/main.py --source video --images_folder ./path/to/video.mp4 --output_folder ./output_folder --frequence 5
 ```
 
-### Mode RGB-D (images avec profondeur)
+### Image Mode (RGB without depth)
 
 ```bash
-python src/main.py --source image_with_depth --images_folder ./chemin/vers/images/rgb --depth_folder ./chemin/vers/images/depth --output_folder ./output_folder
+python src/main.py --source image --images_folder ./path/to/images --output_folder ./output_folder
 ```
 
-### Arguments disponibles
+### RGB-D Mode (images with depth)
 
-Voici la liste complète des arguments acceptés par le script :
-
-```
---images_folder        Dossier contenant les images RGB ou chemin vers le fichier vidéo (défaut: "./images_folder")
---depth_folder         Dossier contenant les images de profondeur (défaut: "./depth_folder")
---calibration_file     Chemin vers le fichier de calibration de caméra (défaut: "./rtabmap_calib.yaml")
---rgb_timestamps       Chemin vers le fichier CSV de timestamps RGB (défaut: "./img_timestamps.csv")
---depth_timestamps     Chemin vers le fichier CSV de timestamps profondeur (défaut: "./depth_timestamps.csv")
---output_folder        Dossier de sortie pour tous les résultats (défaut: "./output_folder")
---source               Source à utiliser: "image" (RGB sans profondeur), "image_with_depth" (RGB-D), "video" (vidéo)
-                       (défaut: "image_with_depth")
---frequence            Fréquence d'extraction d'images depuis la vidéo en Hz (défaut: 20)
+```bash
+python src/main.py --source image_with_depth --images_folder ./path/to/images/rgb --depth_folder ./path/to/images/depth --output_folder ./output_folder
 ```
 
-### Exemples d'utilisation
+### Available Arguments
 
-#### Traitement vidéo avec une fréquence de 10 Hz
+Here is the full list of arguments accepted by the script:
+
+```
+--images_folder        Folder containing RGB images or path to the video file (default: "./images_folder")
+--depth_folder         Folder containing depth images (default: "./depth_folder")
+--calibration_file     Path to the camera calibration file (default: "./rtabmap_calib.yaml")
+--rgb_timestamps       Path to the RGB timestamps CSV file (default: "./img_timestamps.csv")
+--depth_timestamps     Path to the depth timestamps CSV file (default: "./depth_timestamps.csv")
+--output_folder        Output folder for all results (default: "./output_folder")
+--source               Source to use: "image" (RGB without depth), "image_with_depth" (RGB-D), "video" (video)
+                       (default: "image_with_depth")
+--frequence            Frame extraction frequency from video in Hz (default: 20)
+```
+
+### Usage Examples
+
+#### Video processing at 10 Hz
 ```bash
 python src/main.py --source video --images_folder ./data/video.mp4 --output_folder ./results --frequence 10
 ```
 
-#### Traitement d'images RGB avec génération de profondeur
+#### RGB image processing with depth estimation
 ```bash
 python src/main.py --source image --images_folder ./data/rgb_images --output_folder ./results
 ```
 
-#### Traitement d'images RGB-D existantes avec fichiers de timestamps
+#### Existing RGB-D image processing with timestamp files
 ```bash
 python src/main.py --source image_with_depth --images_folder ./data/rgb --depth_folder ./data/depth --rgb_timestamps ./data/rgb_timestamps.csv --depth_timestamps ./data/depth_timestamps.csv --output_folder ./results
 ```
 
-## 📊 Format des données
+## 📊 Data Format
 
-### Structure pour les séquences d'images
-Les images doivent être nommées de manière séquentielle ou avec des timestamps.
+### Structure for Image Sequences
+Images should be named sequentially or with timestamps.
 
-### Format CSV pour les timestamps
-Si vous utilisez des timestamps personnalisés, le CSV doit contenir :
-- `timestamp` : nombre (float ou int)
-- `filename` : nom exact de l'image (avec extension)
+### CSV Format for Timestamps
+If you use custom timestamps, the CSV must contain:
+- `timestamp`: number (float or int)
+- `filename`: exact image name (with extension)
 
-Exemple :
+Example:
 ```csv
 timestamp,filename
 1713456011.123456,rgb_001.png
 1713456011.323456,rgb_002.png
 ```
 
-## 🔧 Paramètres avancés de RTAB-Map
+## 🔧 Advanced RTAB-Map Parameters
 
-Le projet expose plusieurs paramètres RTAB-Map pour les utilisateurs avancés :
-- Paramètres d'odométrie visuelle
-- Options de loop closure
-- Filtrage de nuage de points
-- Paramètres d'optimisation du maillage
+The project exposes several RTAB-Map parameters for advanced users:
+- Visual odometry parameters
+- Loop closure options
+- Point cloud filtering
+- Mesh optimization parameters
 
-### Fichiers de configuration paramètres
+### Parameter Configuration Files
 
-Le répertoire `<PROJECT_ROOT>/src/rtabmap/rtabmap_params/` contient trois fichiers JSON qui permettent de configurer finement le comportement de RTAB-Map :
+The `<PROJECT_ROOT>/src/rtabmap/rtabmap_params/` directory contains three JSON files to finely configure RTAB-Map behavior:
 
-1. **`export_params.json`** : Paramètres pour l'exportation des nuages de points et meshes
-   - Format d'exportation (PLY, OBJ, etc.)
-   - Densité des nuages de points
-   - Options de texture et coloration
-   - Filtres d'export (distance, bruit, etc.)
+1. **`export_params.json`**: Parameters for exporting point clouds and meshes
+   - Export format (PLY, OBJ, etc.)
+   - Point cloud density
+   - Texture and coloring options
+   - Export filters (distance, noise, etc.)
 
-2. **`generate_db_params.json`** : Paramètres pour la génération initiale de la base de données
-   - Paramètres de détection de feature points
-   - Options de calibration de caméra
-   - Paramètres d'optimisation de la carte
-   - Configuration des correspondances de feature
+2. **`generate_db_params.json`**: Parameters for initial database generation
+   - Feature point detection parameters
+   - Camera calibration options
+   - Map optimization parameters
+   - Feature matching configuration
 
-3. **`reprocess_params.json`** : Paramètres pour le retraitement d'une base de données existante
-   - Options de filtrage
-   - Paramètres de re-optimisation
-   - Techniques de loop closure
-   - Configuration des ajustements globaux
+3. **`reprocess_params.json`**: Parameters for reprocessing an existing database
+   - Filtering options
+   - Re-optimization parameters
+   - Loop closure techniques
+   - Global adjustment configuration
 
-Ces fichiers peuvent être modifiés selon vos besoins pour affiner les résultats de la cartographie 3D.
+You can modify these files as needed to fine-tune your 3D mapping results.
 
-Consultez la documentation RTAB-Map complète pour plus de détails sur les paramètres disponibles : [Documentation RTAB-Map](http://wiki.ros.org/rtabmap_ros/Tutorials/Advanced%20Parameter%20Tuning)
+See the full RTAB-Map documentation for more details: [RTAB-Map Documentation](http://wiki.ros.org/rtabmap_ros/Tutorials/Advanced%20Parameter%20Tuning)
 
-## 🧠 Extensions et personnalisations
+## 🧠 Extensions and Customization
 
-- Intégration d'autres modèles d'estimation de profondeur
-- Filtrage spatial sur le nuage de points généré
-- Support pour différents formats d'image (.jpg, .tiff, etc.)
-- Ajout de logs détaillés
-- Parallélisation des traitements pour améliorer les performances
+- Integration of other depth estimation models
+- Spatial filtering on the generated point cloud
+- Support for different image formats (.jpg, .tiff, etc.)
+- Detailed logging
+- Parallelization for improved performance
 
-## 📜 Licence
+## 📜 License
 
-Ce projet est sous licence MIT.
+This project is licensed under the MIT License.
 
 ---
