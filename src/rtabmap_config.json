@@ -1,1 +1,4 @@
-{"reprocess": true, "export_format": "--mesh"}
+{
+  "reprocess": true,
+  "export_format": "--cloud"
+}

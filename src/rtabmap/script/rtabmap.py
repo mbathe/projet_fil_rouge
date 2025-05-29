@@ -28,10 +28,6 @@ REPROCESS_PARAMS_FILES = f"{RTABMAB_DOCKER_ROOT}/reprocess_params.json"
 
 
 
-
-
-
-
 def convert_to_timestamps(img_path=None, depth_path=None, img_timestamps_path=None, depth_timestamps_path=None):
     """
     Convert image filenames to timestamp-based names while preserving original extensions.
