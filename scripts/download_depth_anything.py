@@ -173,7 +173,7 @@ def download_depth_anything_v2(target_directory="./src/depth/DepthAnythingV2"):
     repo_url = "https://github.com/DepthAnything/Depth-Anything-V2.git"
     print(f"Téléchargement de Depth Anything V2 depuis {repo_url}...")
 
-    clone_cmd = f'git clone {repo_url} "{target_path}"'
+    clone_cmd = ["git", "clone", repo_url, str(target_path)]
     result = run_command(clone_cmd)
 
     if result is None:
