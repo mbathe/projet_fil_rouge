@@ -91,8 +91,8 @@ def download_model_weights(project_path):
     model_large_url = "https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Hypersim-Large/resolve/main/depth_anything_v2_metric_hypersim_vitl.pth?download=true"
 
     # URL et destination du fichier de poids
-    model_url = model_base_url if DEPTH_ANYTHING_TYPE == "small" else (
-        model_small_url if DEPTH_ANYTHING_TYPE == "base" else model_large_url
+    model_url = model_small_url if DEPTH_ANYTHING_TYPE == "small" else (
+        model_base_url if DEPTH_ANYTHING_TYPE == "base" else model_large_url
     )
     model_file = checkpoints_dir / "depth_anything_v2_metric_hypersim_vits.pth" if DEPTH_ANYTHING_TYPE == "small" else (
         checkpoints_dir / "depth_anything_v2_metric_hypersim_vitb.pth" if DEPTH_ANYTHING_TYPE == "base" else checkpoints_dir /
@@ -152,9 +152,6 @@ def download_depth_anything_v2(target_directory="./src/depth/DepthAnythingV2"):
     # Création du répertoire parent si nécessaire
     parent_dir.mkdir(parents=True, exist_ok=True)
 
-    # Création du répertoire de destination si nécessaire
-    target_path.mkdir(parents=True, exist_ok=True)
-
     print(f"Répertoire de destination: {target_path}")
 
     # Vérification si le répertoire existe déjà
@@ -168,6 +165,9 @@ def download_depth_anything_v2(target_directory="./src/depth/DepthAnythingV2"):
         else:
             print("Téléchargement annulé.")
             return False
+    else:
+        # Création du répertoire de destination si nécessaire
+        target_path.mkdir(parents=True, exist_ok=True)
 
     # Clone du dépôt
     repo_url = "https://github.com/DepthAnything/Depth-Anything-V2.git"
