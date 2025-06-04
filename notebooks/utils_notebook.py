@@ -200,7 +200,7 @@ def search_one_plane_normals(pts, normals, min_pts, plane_threshold, orient_thre
         normal_plane = plane[:3] / np.linalg.norm(plane[:3])
         dot_z = np.abs(np.dot(normal_plane, np.array([0, 0, 1])))
         # Keep only horizontal and vertical planes (aligned with Z)
-        if not (dot_z > 0.97 or dot_z < 0.03):
+        if dot_z <= 0.97 and dot_z >= 0.03:
             continue
         mask_dist = get_inliers_in_plane(pts, plane, plane_threshold)
         mask_orient = get_inliers_in_plane_normals(
