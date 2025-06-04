@@ -226,10 +226,8 @@ def main():
     # Demande du répertoire de destination
     default_dir = "./src/depth/DepthAnythingV2"
     user_dir = input(
-        f"Répertoire de destination (défaut: {default_dir}): ").strip()
+            f"Répertoire de destination (défaut: {default_dir}): ").strip() or default_dir
 
-    if not user_dir:
-        user_dir = default_dir
 
     # Téléchargement
     success = download_depth_anything_v2(user_dir)
