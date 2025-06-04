@@ -5,7 +5,7 @@
 ## Project Overview
 
 This project enables the generation of a 3D map from various input sources:
-- Monocular Videos (splitted into images, with depth estimation)
+- Monocular Videos (split into images, with depth estimation)
 - RGB images (with depth estimation)
 - Existing RGB-D images
 
