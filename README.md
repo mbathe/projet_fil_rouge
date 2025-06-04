@@ -2,7 +2,7 @@
 
 ![](https://github.com/mbathe/projet_fil_rouge/blob/main/data/deer_walk_3dmap.png)
 
-## 📋 Project Overview
+## Project Overview
 
 This project enables the generation of a 3D map from various input sources:
 - Videos (split into images)
@@ -22,7 +22,7 @@ The main workflow consists of:
 - **Docker**: Containerization of complex dependencies
 - **Python**: Orchestration of the complete pipeline
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 project/
@@ -37,7 +37,7 @@ project/
 └── scripts/               # Utility scripts
 ```
 
-## 📦 Main Modules
+## Main Modules
 
 ### 1. Depth Estimation
 - Uses the **DepthAnythingV2** model to generate depth maps from RGB images
@@ -69,7 +69,7 @@ To install Docker, follow the official Docker documentation for your operating s
 
 ### Docker Without Sudo (important)
 
-⚠️ **IMPORTANT**: Since Docker is invoked directly from the Python code, it is **crucial** to configure Docker to run without sudo on Linux systems. Without this, the Python scripts will not be able to execute Docker commands properly.
+**IMPORTANT**: Since Docker is invoked directly from the Python code, it is **crucial** to configure Docker to run without sudo on Linux systems. Without this, the Python scripts will not be able to execute Docker commands properly.
 
 Follow the post-installation instructions for your platform:
 - **Post-install documentation**: [https://docs.docker.com/engine/install/linux-postinstall/](https://docs.docker.com/engine/install/linux-postinstall/)
@@ -121,7 +121,7 @@ python scripts/download_dataset.py
 
 The project uses a custom Docker image that contains RTAB-Map and the necessary scripts for 3D mapping.
 
-⚠️ **IMPORTANT**: Before running the main program, you must build the Docker image:
+**IMPORTANT**: Before running the main program, you must build the Docker image:
 
 ```bash
 sudo docker build -t rtabmap_ubuntu20 .
@@ -138,9 +138,9 @@ This script is automatically called when the Docker container is run from the Py
 
 **Note**: Every time you modify the contents of the `./src/rtabmap/` directory, you must rebuild the Docker image for changes to take effect.
 
-## 🚀 Usage
+## Usage
 
-### ⚠️ Absolute Paths Required
+### Absolute Paths Required
 
 **Important**: Since the program uses Docker with volume mounts, all paths must be **absolute** and not relative. Relative paths will not work because Docker requires full paths to mount volumes correctly.
 
@@ -219,7 +219,7 @@ python src/main.py --source image --images_folder ./data/rgb_images --output_fol
 python src/main.py --source image_with_depth --images_folder ./data/rgb --depth_folder ./data/depth --rgb_timestamps ./data/rgb_timestamps.csv --depth_timestamps ./data/depth_timestamps.csv --output_folder ./results
 ```
 
-## 📊 Data Format
+## Data Format
 
 ### Structure for Image Sequences
 Images should be named sequentially or with timestamps.
@@ -270,16 +270,11 @@ You can modify these files as needed to fine-tune your 3D mapping results.
 
 See the full RTAB-Map documentation for more details: [RTAB-Map Documentation](http://wiki.ros.org/rtabmap_ros/Tutorials/Advanced%20Parameter%20Tuning)
 
-## 🧠 Extensions and Customization
+## Extensions and Customization
 
 - Integration of other depth estimation models
 - Spatial filtering on the generated point cloud
 - Support for different image formats (.jpg, .tiff, etc.)
 - Detailed logging
 - Parallelization for improved performance
-
-## 📜 License
-
-This project is licensed under the MIT License.
-
 ---
