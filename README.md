@@ -242,7 +242,7 @@ timestamp,filename
 1713456011.323456,rgb_002.png
 ```
 
-## 🔧 Advanced RTAB-Map Parameters
+## Advanced RTAB-Map Parameters
 
 The project exposes several RTAB-Map parameters for advanced users:
 - Visual odometry parameters
@@ -283,4 +283,13 @@ See the full RTAB-Map documentation for more details: [RTAB-Map Documentation](h
 - Support for different image formats (.jpg, .tiff, etc.)
 - Detailed logging
 - Parallelization for improved performance
----
+
+
+## Notebooks
+
+The requirements needed to run the notebooks are listed separately, as they are not required to run the rest of the code. You can install those by running `pip install -r notebooks/requirements.txt`
+
+The notebooks are intended to :
+* Show how to visualize the cloudpoints generated using Python and Open3D,
+* Explore and present various techniques for rendering the structure of a scene or room in 2D, with the aim of capturing its spatial layout (for cartography purpose for example).
+
