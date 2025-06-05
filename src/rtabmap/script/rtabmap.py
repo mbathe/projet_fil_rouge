@@ -16,7 +16,7 @@ load_dotenv()
 
 # Default paths - configurable via parameters
 RTABMAB_DOCKER_ROOT = "/rtabmap_ws"
-SHOW_PROGRESS = True  # Set to False to disable progress bars
+SHOW_PROGRESS = False  # Set to False to disable progress bars
 RGB_PATH = f"{RTABMAB_DOCKER_ROOT}/rgb_sync"
 DEPTH_PATH = f"{RTABMAB_DOCKER_ROOT}/depth_sync"
 IMG_TIMESTAMPS = "img_timestamps.csv"
@@ -295,7 +295,8 @@ def generate_db():
     # Command to generate the database
     print("\n===== Génération de la base de données RTAB-Map =====")
     execute_command(GENERATE_DB_PARAMS_FILES,
-                    start_command=["rtabmap-rgbd_dataset"],
+                    start_command=["rtabmap-rgbd_dataset",
+                                   "--calib ", "/rtabmap_ws/rtabmap_calib.yaml"],
                     end_command=["--output_path", "/rtabmap_ws"],
                     show_progress=SHOW_PROGRESS)
     
