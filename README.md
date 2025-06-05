@@ -5,20 +5,20 @@
 ## Project Overview
 
 This project enables the generation of a 3D map from various input sources:
-- Videos (split into images)
+- Monocular Videos (split into images, with depth estimation)
 - RGB images (with depth estimation)
 - Existing RGB-D images
 
 The main workflow consists of:
 1. **Data acquisition**: video or image sequence
-2. **Depth estimation**: using the DepthAnythingV2 model to create depth images
-3. **3D mapping**: using RTAB-Map via Docker to generate a 3D model
-4. **Export**: point cloud in .ply or mesh format for visualization and analysis
+2. **Depth estimation**: using the DepthAnythingV2 metric model to reconstruct metric depth images
+3. **3D mapping**: using RTAB-Map via Docker to generate a 3D cartography
+4. **Export**: point cloud or mesh in .ply format for visualization and analysis
 
-## 🔍 Key Technologies
+## Key Technologies
 
 - **RTAB-Map** (Real-Time Appearance-Based Mapping): SLAM framework for 3D mapping
-- **DepthAnythingV2**: Deep learning model for depth estimation from RGB images
+- **DepthAnythingV2**: Deep learning model for metric depth estimation from RGB images
 - **Docker**: Containerization of complex dependencies
 - **Python**: Orchestration of the complete pipeline
 
@@ -54,7 +54,7 @@ project/
 - Creates 3D meshes
 - Offers 2D projection options of the 3D model
 
-## 🛠️ Installation and Setup
+## Installation and Setup
 
 ### Prerequisites
 - Python 3.8+
@@ -89,14 +89,14 @@ pip install -r requirements.txt
 
 #### 2. **Automatic Download of Depth Anything V2**
 
-The Python script (`download_depth_anything.py`) allows you to automatically download the official **Depth Anything V2** repository as well as the associated model weights.
+The Python script (`download_depth_anything.py`) allows you to automatically download the official **Depth Anything V2 metric** repository as well as the associated model weights.
 
 ##### Usage
 
 **2.1 Set the model type**  
    Set the `DEPTH_ANYTHING_TYPE` environment variable in the .env file according to the desired model type:  
-   - `small`
-   - `base` (default)
+   - `small` (default)
+   - `base` 
    - `large`
 
 **2.2 Run the script**  
@@ -117,6 +117,7 @@ Run the following command at the project root to download the deer_walk test ima
 python scripts/download_dataset.py
 ```
 
+Caution : this dataset is intended for example purposes only, as it is under non-commercial license. 
 ### Build the Custom Docker Image
 
 The project uses a custom Docker image that contains RTAB-Map and the necessary scripts for 3D mapping.
@@ -125,6 +126,11 @@ The project uses a custom Docker image that contains RTAB-Map and the necessary 
 
 ```bash
 sudo docker build -t rtabmap_ubuntu20 .
+```
+on Linux or 
+
+```bash
+docker build -t rtabmap_ubuntu20 .
 ```
 
 The `Dockerfile` at the project root:
@@ -165,7 +171,7 @@ For example, if your project is located at `/home/user/cartographie3d`, all path
 If you have run the above command to download the test dataset, you can then run the command below to generate the map from this dataset. Note that the database file and generated mesh or cloud files will be in the ./output directory at the project root.
 
 ```bash
-python3 /home/paul/Cours/projet_fil_rouge/src/main.py
+python3 <PROJECT_ROOT>/projet_fil_rouge/src/main.py
 ```
 
 ### Video Mode (from a video source)
@@ -236,7 +242,7 @@ timestamp,filename
 1713456011.323456,rgb_002.png
 ```
 
-## 🔧 Advanced RTAB-Map Parameters
+## Advanced RTAB-Map Parameters
 
 The project exposes several RTAB-Map parameters for advanced users:
 - Visual odometry parameters
@@ -277,4 +283,13 @@ See the full RTAB-Map documentation for more details: [RTAB-Map Documentation](h
 - Support for different image formats (.jpg, .tiff, etc.)
 - Detailed logging
 - Parallelization for improved performance
----
+
+
+## Notebooks
+
+The requirements needed to run the notebooks are listed separately, as they are not required to run the rest of the code. You can install those by running `pip install -r notebooks/requirements.txt`
+
+The notebooks are intended to :
+* Show how to visualize the cloudpoints generated using Python and Open3D,
+* Explore and present various techniques for rendering the structure of a scene or room in 2D, with the aim of capturing its spatial layout (for cartography purpose for example).
+
