@@ -20,7 +20,7 @@ def run_command(cmd, cwd=None):
     """Exécute une commande shell et gère les erreurs"""
     try:
         result = subprocess.run(
-            cmd,
+            cmd if isinstance(cmd, str) else ' '.join(cmd),
             shell=True,
             check=True,
             capture_output=True,
@@ -154,26 +154,14 @@ def download_depth_anything_v2(target_directory="./src/depth/DepthAnythingV2"):
 
     print(f"Répertoire de destination: {target_path}")
 
-    # Vérification si le répertoire existe déjà
-    if target_path.exists():
-        response = input(
-            f"Le répertoire {target_path} existe déjà. Voulez-vous le supprimer et recommencer ? (Y/N): ")
-        if response.lower() in ['y', 'yes', 'o', 'oui']:
-            import shutil
-            shutil.rmtree(target_path)
-            print("Répertoire existant supprimé.")
-        else:
-            print("Téléchargement annulé.")
-            return False
-    else:
-        # Création du répertoire de destination si nécessaire
-        target_path.mkdir(parents=True, exist_ok=True)
+
 
     # Clone du dépôt
     repo_url = "https://github.com/DepthAnything/Depth-Anything-V2.git"
     print(f"Téléchargement de Depth Anything V2 depuis {repo_url}...")
 
     clone_cmd = ["git", "clone", repo_url, str(target_path)]
+    print("Téléchargement du modèle", clone_cmd)
     result = run_command(clone_cmd)
 
     if result is None:

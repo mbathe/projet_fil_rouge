@@ -15,17 +15,20 @@ from pathlib import Path
 
 load_dotenv()
 # Peut être 'small', 'base' ou 'large'
-DEPTH_ANYTHING_TYPE = os.getenv("DEPTH_ANYTHING_TYPE", "base")
+DEPTH_ANYTHING_TYPE = os.getenv("DEPTH_ANYTHING_TYPE", "small")
+
+DEPTH_ANYTHING_BASE_NAME = os.getenv(
+    "DEPTH_ANYTHING_BASE_NAME", "depth_anything_v2_metric_hypersim_vit")
 
 
 checkpoints_dir = Path(__file__).parent.resolve() / \
     "DepthAnythingV2" / "checkpoints"
 
 
-model_file = checkpoints_dir / "depth_anything_v2_vitb.pth" if DEPTH_ANYTHING_TYPE == "base" else (
-    checkpoints_dir / "depth_anything_v2_vits.pth" if DEPTH_ANYTHING_TYPE == "small" else checkpoints_dir /
-    "depth_anything_v2_vitl.pth"
-)
+end_name = "b" if DEPTH_ANYTHING_TYPE == "base" else (
+    "s" if DEPTH_ANYTHING_TYPE == "small" else "l")
+
+model_file = checkpoints_dir / f"{DEPTH_ANYTHING_BASE_NAME}{end_name}.pth"
 
 
 device = 'cuda' if torch.cuda.is_available(

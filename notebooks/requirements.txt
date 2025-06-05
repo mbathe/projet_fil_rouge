@@ -1,8 +1,7 @@
-open3d
+open3d==0.19.0
 ipykernel
 plotly
-math
-sklearn
+scikit-learn
 alphashape
 shapely
-collections
+scipy==1.14.1
