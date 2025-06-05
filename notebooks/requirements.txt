@@ -1,0 +1,8 @@
+open3d
+ipykernel
+plotly
+math
+sklearn
+alphashape
+shapely
+collections
