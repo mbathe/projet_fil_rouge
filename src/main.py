@@ -3,7 +3,7 @@
 Cartographie 3D RTAB-Map - Module principal
 
 Ce module contient le point d'entrée principal de l'application de cartographie 3D
-utilisant RTAB-Map via Docker, avec support pour différentes sources d'entrée (RGB, RGB-D, vidéo).
+utilisant RTAB-Map en ligne de commande, avec support pour différentes sources d'entrée (RGB, RGB-D, vidéo).
 
 Author: Paul
 Date: 2025-05-29
@@ -19,7 +19,7 @@ from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser as ArgParser,
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Union
 
 # Configuration des constantes
 SCRIPT_DIR = Path(__file__).parent.absolute()
@@ -97,11 +97,11 @@ class PathValidator:
     def validate_and_create_paths(paths: CartographyPaths, source_type: SourceType) -> None:
         """
         Valide et crée les chemins nécessaires.
-        
+
         Args:
             paths: Conteneur des chemins à valider
             source_type: Type de source pour déterminer les validations nécessaires
-            
+
         Raises:
             CartographieError: Si un chemin requis est invalide
         """
@@ -231,78 +231,6 @@ class PathValidator:
                 f"Impossible de créer le dossier d'images {paths.image_folder}: {e}")
 
 
-class DockerCommandBuilder:
-    """Constructeur de commandes Docker pour RTAB-Map."""
-
-    def __init__(self, paths: CartographyPaths, config: RTABMapConfig):
-        """
-        Initialise le constructeur de commandes Docker.
-        
-        Args:
-            paths: Chemins pour les volumes Docker
-            config: Configuration RTAB-Map
-        """
-        self.paths = paths
-        self.config = config
-
-    def build_command(self) -> List[str]:
-        """
-        Construit la commande Docker complète.
-        
-        Returns:
-            Liste des éléments de la commande Docker
-            
-        Raises:
-            CartographieError: Si les fichiers de paramètres sont manquants
-        """
-        try:
-            volumes = self._build_volume_mounts()
-            command = ["docker", "run", "--rm", "-it"] + \
-                volumes + ["rtabmap_ubuntu20"]
-
-            logger.debug(
-                f"Commande Docker construite avec {len(volumes)//2} volumes")
-            return command
-
-        except Exception as e:
-            raise CartographieError(
-                f"Erreur lors de la construction de la commande Docker: {e}")
-
-    def _build_volume_mounts(self) -> List[str]:
-        """
-        Construit la liste des montages de volumes Docker.
-        
-        Returns:
-            Liste des arguments de montage de volumes
-        """
-        volume_mappings = {
-            self.paths.image_folder: "/rtabmap_ws/rgb_sync_docker",
-            self.paths.depth_folder: "/rtabmap_ws/depth_sync_docker",
-            self.paths.rgb_timestamps: "/rtabmap_ws/img_timestamps.csv",
-            self.paths.depth_timestamps: "/rtabmap_ws/depth_timestamps.csv",
-            self.paths.output_folder: "/rtabmap_ws/output/rtabmap",
-            self.paths.calibration_file: "/rtabmap_ws/rtabmap_calib.yaml",
-            RTABMAP_CONFIG_FILE: "/rtabmap_ws/config.json",
-        }
-
-        # Ajout des fichiers de paramètres
-        param_files = {
-            "export_params.json": "/rtabmap_ws/export_params.json",
-            "db_params.json": "/rtabmap_ws/db_params.json",
-            "reprocess_params.json": "/rtabmap_ws/reprocess_params.json",
-        }
-
-        for param_file, container_path in param_files.items():
-            local_path = RTABMAP_PARAMS_DIR / param_file
-            volume_mappings[local_path] = container_path
-
-        volumes = []
-        for local_path, container_path in volume_mappings.items():
-            volumes.extend(["-v", f"{local_path}:{container_path}"])
-
-        return volumes
-
-
 class OutputVerifier:
     """Vérificateur de fichiers de sortie."""
 
@@ -312,10 +240,10 @@ class OutputVerifier:
     def verify_outputs(cls, output_folder: Path) -> Dict[str, bool]:
         """
         Vérifie que les fichiers de sortie attendus ont été générés.
-        
+
         Args:
             output_folder: Dossier de sortie à vérifier
-            
+
         Returns:
             Dictionnaire indiquant la présence de chaque fichier attendu
         """
@@ -342,10 +270,10 @@ class ConfigurationManager:
     def write_config(config: RTABMapConfig) -> None:
         """
         Écrit la configuration RTAB-Map dans un fichier JSON.
-        
+
         Args:
             config: Configuration à écrire
-            
+
         Raises:
             CartographieError: Si l'écriture échoue
         """
@@ -368,7 +296,7 @@ class SourceProcessor:
     def __init__(self, paths: CartographyPaths, frequency: int = 20):
         """
         Initialise le processeur de sources.
-        
+
         Args:
             paths: Chemins pour le traitement
             frequency: Fréquence pour l'extraction vidéo (Hz)
@@ -379,7 +307,7 @@ class SourceProcessor:
     def process_video(self) -> None:
         """
         Traite une source vidéo pour générer une cartographie 3D.
-        
+
         Note:
             Cette méthode nécessite l'implémentation de l'extraction de frames
             et de l'estimation de profondeur.
@@ -392,7 +320,7 @@ class SourceProcessor:
     def process_rgb_images(self) -> None:
         """
         Traite des images RGB pour générer une cartographie 3D.
-        
+
         Note:
             Cette méthode nécessite l'implémentation de l'estimation de profondeur.
         """
@@ -421,7 +349,7 @@ class SourceProcessor:
     def process_rgbd_images(self) -> None:
         """
         Traite des images RGB-D pour générer une cartographie 3D.
-        
+
         Cette méthode peut directement procéder à la cartographie car
         les images de profondeur sont déjà disponibles.
         """
@@ -433,16 +361,50 @@ class SourceProcessor:
             raise CartographieError("Dossier de profondeur vide ou inexistant")
 
 
+class RTABMapCommandBuilder:
+    """Constructeur de commandes pour RTAB-Map en ligne de commande."""
+
+    def __init__(self, paths: CartographyPaths, config: RTABMapConfig):
+        self.paths = paths
+        self.config = config
+
+    def build_command(self) -> List[str]:
+        """
+        Construit la commande RTAB-Map complète.
+        Returns:
+            Liste des éléments de la commande RTAB-Map
+        """
+        command = [
+            "rtabmap",
+            "--database_path", str(self.paths.output_folder / "rtabmap.db"),
+            "--output", str(self.paths.output_folder),
+            "--calib", str(self.paths.calibration_file),
+            self.config.export_format.value,
+        ]
+        # Ajout des paramètres selon la source
+        if self.paths.image_folder and self.paths.image_folder.exists():
+            command += ["--rgb", str(self.paths.image_folder)]
+        if self.paths.depth_folder and self.paths.depth_folder.exists():
+            command += ["--depth", str(self.paths.depth_folder)]
+        if self.paths.rgb_timestamps and self.paths.rgb_timestamps.exists():
+            command += ["--rgb_timestamps", str(self.paths.rgb_timestamps)]
+        if self.paths.depth_timestamps and self.paths.depth_timestamps.exists():
+            command += ["--depth_timestamps", str(self.paths.depth_timestamps)]
+        if self.config.reprocess:
+            command += ["--reprocess"]
+        return command
+
+
 class RTAB3DMapper:
     """Classe principale pour la génération de cartographie 3D utilisant RTAB-Map."""
 
     def __init__(self, args: Namespace):
         """
         Initialise l'instance de cartographie 3D.
-        
+
         Args:
             args: Arguments de ligne de commande parsés
-            
+
         Raises:
             CartographieError: Si les arguments sont invalides
         """
@@ -469,7 +431,8 @@ class RTAB3DMapper:
 
             # Initialisation des composants
             self.source_processor = SourceProcessor(self.paths, self.frequency)
-            self.docker_builder = DockerCommandBuilder(self.paths, self.config)
+            self.command_builder = RTABMapCommandBuilder(
+                self.paths, self.config)
 
             logger.info(
                 f"Initialisation réussie avec source: {self.source_type.value}")
@@ -480,7 +443,7 @@ class RTAB3DMapper:
     def process_source(self) -> None:
         """
         Traite la source d'entrée selon le type spécifié.
-        
+
         Raises:
             CartographieError: Si le traitement échoue
         """
@@ -502,10 +465,10 @@ class RTAB3DMapper:
 
     def _build_3d_map(self) -> None:
         """
-        Exécute RTAB-Map via Docker pour générer la cartographie 3D.
-        
+        Exécute RTAB-Map en ligne de commande pour générer la cartographie 3D.
+
         Raises:
-            CartographieError: Si l'exécution Docker échoue
+            CartographieError: Si l'exécution échoue
         """
         logger.info(
             "Démarrage de la génération de la cartographie 3D avec RTAB-Map")
@@ -514,9 +477,9 @@ class RTAB3DMapper:
             # Écriture de la configuration
             ConfigurationManager.write_config(self.config)
 
-            # Construction et exécution de la commande Docker
-            command = self.docker_builder.build_command()
-            self._execute_docker_command(command)
+            # Construction et exécution de la commande RTAB-Map
+            command = self.command_builder.build_command()
+            self._execute_command(command)
 
             # Vérification des sorties
             verification_results = OutputVerifier.verify_outputs(
@@ -528,28 +491,25 @@ class RTAB3DMapper:
             logger.info("Cartographie 3D terminée avec succès")
 
         except subprocess.SubprocessError as e:
-            raise CartographieError(f"Erreur d'exécution Docker: {e}")
+            raise CartographieError(f"Erreur d'exécution RTAB-Map: {e}")
         except Exception as e:
             raise CartographieError(
                 f"Erreur lors de la génération de la carte 3D: {e}")
 
-    def _execute_docker_command(self, command: List[str]) -> None:
+    def _execute_command(self, command: List[str]) -> None:
         """
-        Exécute la commande Docker avec gestion d'erreurs.
-        
+        Exécute la commande RTAB-Map avec gestion d'erreurs.
+
         Args:
-            command: Commande Docker à exécuter
-            
+            command: Commande à exécuter
+
         Raises:
             subprocess.SubprocessError: Si l'exécution échoue
         """
-        # Masquage des chemins sensibles pour les logs
-        log_command = ' '.join(
-            [c.split('/')[-1] if '/' in c else c for c in command])
-        logger.debug(f"Exécution de la commande Docker: {log_command}")
+        logger.debug(f"Exécution de la commande: {' '.join(command)}")
 
         print("\n" + "="*80)
-        print("DÉBUT DE L'EXÉCUTION DOCKER - OUTPUT EN TEMPS RÉEL")
+        print("DÉBUT DE L'EXÉCUTION RTABMAP - OUTPUT EN TEMPS RÉEL")
         print("="*80 + "\n")
 
         try:
@@ -557,17 +517,17 @@ class RTAB3DMapper:
                 command, check=False, timeout=3600)  # Timeout de 1 heure
 
             print("\n" + "="*80)
-            print("FIN DE L'EXÉCUTION DOCKER")
+            print("FIN DE L'EXÉCUTION RTABMAP")
             print("="*80 + "\n")
 
             if result.returncode != 0:
                 raise subprocess.CalledProcessError(result.returncode, command)
 
         except subprocess.TimeoutExpired:
-            logger.error("Timeout de l'exécution Docker (1 heure)")
+            logger.error("Timeout de l'exécution RTAB-Map (1 heure)")
             raise
         except subprocess.CalledProcessError as e:
-            logger.error(f"Erreur d'exécution Docker (code: {e.returncode})")
+            logger.error(f"Erreur d'exécution RTAB-Map (code: {e.returncode})")
             raise
 
 
@@ -578,7 +538,7 @@ class CommandLineParser:
     def create_parser() -> ArgParser:
         """
         Crée et configure le parser d'arguments.
-        
+
         Returns:
             Parser d'arguments configuré
         """
@@ -668,7 +628,7 @@ class CommandLineParser:
     def parse_arguments(cls) -> Namespace:
         """
         Parse les arguments de ligne de commande.
-        
+
         Returns:
             Namespace contenant les arguments parsés
         """
@@ -679,7 +639,7 @@ class CommandLineParser:
 def setup_logging(debug: bool = False) -> None:
     """
     Configure le système de logging.
-    
+
     Args:
         debug: Active le mode debug si True
     """
@@ -693,14 +653,14 @@ def setup_logging(debug: bool = False) -> None:
 def main() -> int:
     """
     Point d'entrée principal du programme.
-    
+
     Returns:
         Code de retour (0 pour succès, autre pour erreur)
     """
     try:
         # Parsing des arguments
         args = CommandLineParser.parse_arguments()
-        
+
         args.depth_image_folder = args.depth_folder if args.source == SourceType.IMAGE_WITH_DEPTH else OUTPUT_DEPTH_IMAGES
 
         # Configuration du logging

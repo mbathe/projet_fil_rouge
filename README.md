@@ -12,14 +12,13 @@ This project enables the generation of a 3D map from various input sources:
 The main workflow consists of:
 1. **Data acquisition**: video or image sequence
 2. **Depth estimation**: using the DepthAnythingV2 metric model to reconstruct metric depth images
-3. **3D mapping**: using RTAB-Map via Docker to generate a 3D cartography
+3. **3D mapping**: using RTAB-Map (installed natively) to generate a 3D cartography
 4. **Export**: point cloud or mesh in .ply format for visualization and analysis
 
 ## Key Technologies
 
 - **RTAB-Map** (Real-Time Appearance-Based Mapping): SLAM framework for 3D mapping
 - **DepthAnythingV2**: Deep learning model for metric depth estimation from RGB images
-- **Docker**: Containerization of complex dependencies
 - **Python**: Orchestration of the complete pipeline
 
 ## Project Structure
@@ -58,29 +57,51 @@ project/
 
 ### Prerequisites
 - Python 3.8+
-- Docker
+- **RTAB-Map** installed natively on your system (see below)
 - GPU recommended for depth model inference
 
-### Docker Installation
+### RTAB-Map Installation
 
-To install Docker, follow the official Docker documentation for your operating system:
-- **Official installation site**: [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
-- Choose your Linux distribution, or Windows/macOS as appropriate
+You must install RTAB-Map on your system.  
+**Docker is no longer required or used.**
 
-### Docker Without Sudo (important)
+#### On Ubuntu (recommended):
 
-**IMPORTANT**: Since Docker is invoked directly from the Python code, it is **crucial** to configure Docker to run without sudo on Linux systems. Without this, the Python scripts will not be able to execute Docker commands properly.
+```bash
+sudo apt update
+sudo apt install rtabmap
+```
 
-Follow the post-installation instructions for your platform:
-- **Post-install documentation**: [https://docs.docker.com/engine/install/linux-postinstall/](https://docs.docker.com/engine/install/linux-postinstall/)
+Or, for the latest version:
 
-Main steps:
-1. Add your user to the Docker group
-2. Apply group changes
-3. Verify installation without sudo
-4. Set Docker to start on boot
+```bash
+sudo add-apt-repository ppa:introlab/rtabmap
+sudo apt update
+sudo apt install rtabmap
+```
 
-### Environment Setup
+#### On Windows:
+
+- Download the latest RTAB-Map standalone binaries from the [official releases page](https://github.com/introlab/rtabmap/releases).
+- Add the RTAB-Map installation directory to your system PATH.
+
+#### On macOS (Homebrew):
+
+```bash
+brew install rtabmap
+```
+
+#### Verify Installation
+
+After installation, check that RTAB-Map is available in your terminal:
+
+```bash
+rtabmap --version
+```
+
+If you see the version number, RTAB-Map is correctly installed.
+
+### Python Environment Setup
 
 #### 1. **Install Python dependencies**:
 ```bash
@@ -108,8 +129,6 @@ The Python script (`download_depth_anything.py`) allows you to automatically dow
 **2.3 Follow the instructions**  
    The script will guide you to choose the destination folder, install dependencies, and download the model weights corresponding to the selected type.
 
-
-
 #### 3. **Download the test dataset**:
 
 Run the following command at the project root to download the deer_walk test image dataset to ./data/deer_walk/ (set by the DIR_DATASET environment variable):
@@ -118,60 +137,27 @@ python scripts/download_dataset.py
 ```
 
 Caution : this dataset is intended for example purposes only, as it is under non-commercial license. 
-### Build the Custom Docker Image
-
-The project uses a custom Docker image that contains RTAB-Map and the necessary scripts for 3D mapping.
-
-**IMPORTANT**: Before running the main program, you must build the Docker image:
-
-```bash
-sudo docker build -t rtabmap_ubuntu20 .
-```
-on Linux or 
-
-```bash
-docker build -t rtabmap_ubuntu20 .
-```
-
-The `Dockerfile` at the project root:
-1. Builds the Docker image with RTAB-Map and all required dependencies
-2. Injects the script `./src/rtabmap/rtabmap_script.py` into the image
-3. Sets up the runtime environment for 3D mapping
-
-This script is automatically called when the Docker container is run from the Python code and handles the 3D mapping process.
-
-**Note**: You do not need to install RTAB-Map separately or download another Docker image, as the Dockerfile sets up everything required.
-
-**Note**: Every time you modify the contents of the `./src/rtabmap/` directory, you must rebuild the Docker image for changes to take effect.
 
 ## Usage
 
-### Absolute Paths Required
-
-**Important**: Since the program uses Docker with volume mounts, all paths must be **absolute** and not relative. Relative paths will not work because Docker requires full paths to mount volumes correctly.
-
-In the examples below, replace `<PROJECT_ROOT>` with the absolute path to your project root.
-
-### Full Example with Absolute Paths
+### Example
 
 ```bash
-python3 <PROJECT_ROOT>/src/main.py \
-  --image_folder "<PROJECT_ROOT>/data/images" \
-  --depth_folder "<PROJECT_ROOT>/data/depth" \
-  --calibration_file "<PROJECT_ROOT>/data/rtabmap_calib.yaml" \
-  --rgb_timestamps "<PROJECT_ROOT>/data/img_timestamps.csv" \
-  --depth_timestamps "<PROJECT_ROOT>/data/depth_timestamps.csv" \
-  --output_folder "<PROJECT_ROOT>/output"
+python3 src/main.py \
+  --image_folder "./data/images" \
+  --depth_folder "./data/depth" \
+  --calibration_file "./data/rtabmap_calib.yaml" \
+  --rgb_timestamps "./data/img_timestamps.csv" \
+  --depth_timestamps "./data/depth_timestamps.csv" \
+  --output_folder "./output"
 ```
-
-For example, if your project is located at `/home/user/cartographie3d`, all paths should start with that root.
 
 ### Using the deer_walk Test Data
 
 If you have run the above command to download the test dataset, you can then run the command below to generate the map from this dataset. Note that the database file and generated mesh or cloud files will be in the ./output directory at the project root.
 
 ```bash
-python3 <PROJECT_ROOT>/projet_fil_rouge/src/main.py
+python3 src/main.py
 ```
 
 ### Video Mode (from a video source)
@@ -206,23 +192,6 @@ Here is the full list of arguments accepted by the script:
 --source               Source to use: "image" (RGB without depth), "image_with_depth" (RGB-D), "video" (video)
                        (default: "image_with_depth")
 --frequence            Frame extraction frequency from video in Hz (default: 20)
-```
-
-### Usage Examples
-
-#### Video processing at 10 Hz
-```bash
-python src/main.py --source video --images_folder ./data/video.mp4 --output_folder ./results --frequence 10
-```
-
-#### RGB image processing with depth estimation
-```bash
-python src/main.py --source image --images_folder ./data/rgb_images --output_folder ./results
-```
-
-#### Existing RGB-D image processing with timestamp files
-```bash
-python src/main.py --source image_with_depth --images_folder ./data/rgb --depth_folder ./data/depth --rgb_timestamps ./data/rgb_timestamps.csv --depth_timestamps ./data/depth_timestamps.csv --output_folder ./results
 ```
 
 ## Data Format
@@ -283,7 +252,6 @@ See the full RTAB-Map documentation for more details: [RTAB-Map Documentation](h
 - Support for different image formats (.jpg, .tiff, etc.)
 - Detailed logging
 - Parallelization for improved performance
-
 
 ## Notebooks
 
