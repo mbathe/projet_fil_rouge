@@ -1,3 +1,4 @@
+from pathlib import Path
 from dotenv import load_dotenv
 import os
 import gdown
@@ -5,18 +6,22 @@ import zipfile
 import logging
 load_dotenv()
 
+
+SCRIPT_DIR = Path(__file__).parent.absolute()
+PROJECT_ROOT = SCRIPT_DIR.parent
+LOG_DIR = PROJECT_ROOT / "logs" / "scripts"
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler(os.path.join(os.path.join(
-            os.path.dirname(__file__), '..'), "script.log")),
+            os.path.dirname(__file__), '..'), LOG_DIR/"download_dataset.log")),
         logging.StreamHandler()
     ]
 )
 
-error_handler = logging.FileHandler(os.path.join(os.path.join(
-    os.path.dirname(__file__), '..'), "error.log"))
+error_handler = logging.FileHandler(LOG_DIR/"download_dataset.log")
 error_handler.setLevel(logging.ERROR)
 error_handler.setFormatter(logging.Formatter(
     '%(asctime)s - %(levelname)s - %(message)s'))

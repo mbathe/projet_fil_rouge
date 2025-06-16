@@ -10,15 +10,17 @@ from dotenv import load_dotenv
 import os
 import re
 from tqdm import tqdm
+from pathlib import Path
 
 # Charge les variables depuis le fichier .env
 load_dotenv()
 
 # Default paths - configurable via parameters
 RTABMAB_DOCKER_ROOT = "/rtabmap_ws"
-SHOW_PROGRESS = False  # Set to False to disable progress bars
+SHOW_PROGRESS = False
 RGB_PATH = f"{RTABMAB_DOCKER_ROOT}/rgb_sync"
 DEPTH_PATH = f"{RTABMAB_DOCKER_ROOT}/depth_sync"
+LOG_DIR = Path(RTABMAB_DOCKER_ROOT)/"logs"
 IMG_TIMESTAMPS = "img_timestamps.csv"
 DEPTH_TIMESTAMPS = "depth_timestamps.csv"
 EXPORT_PARAMS_FILES = f"{RTABMAB_DOCKER_ROOT}/export_params.json"
@@ -67,7 +69,7 @@ def convert_to_timestamps(img_path=None, depth_path=None, img_timestamps_path=No
                 # Try matching without extension
                 match = timestamps_df[timestamps_df["filename"] == name_without_ext]
                 if match.empty:
-                    pbar.set_description(f"❌ Pas de timestamp pour {basename}")
+                    pbar.set_description(f"Pas de timestamp pour {basename}")
                     continue
             
             timestamp = match["timestamp"].values[0]
@@ -78,7 +80,7 @@ def convert_to_timestamps(img_path=None, depth_path=None, img_timestamps_path=No
                 timestamp += np.random.uniform(0.001, 0.005)
                 adjusted_count += 1
                 pbar.set_description(
-                    f"⚠️ Ajustement {basename}: {old_timestamp:.6f} → {timestamp:.6f}")
+                    f"Ajustement {basename}: {old_timestamp:.6f} → {timestamp:.6f}")
             else:
                 pbar.set_description(f"✓ Renommage {basename}")
             
@@ -182,7 +184,7 @@ def prepare_dataset(rgb_dir, depth_dir, calib_file, rgb_timestamps, depth_timest
             f"[WARN] Aucune image trouvée dans le répertoire de profondeur: {depth_dir}")
 
 
-def execute_command(config_file, start_command=[], end_command=[], show_progress=False):
+def execute_command(config_file, start_command=[], end_command=[], show_progress=False, sud_dir_log="generate_db"):
     """Exécute la commande avec les paramètres de configuration"""
     # Charger la configuration
     config = load_config(config_file)
@@ -191,33 +193,63 @@ def execute_command(config_file, start_command=[], end_command=[], show_progress
     
     full_command = start_command + config_args + end_command
 
-    if not show_progress:
-        # Méthode standard d'exécution
-        try:
-            result = subprocess.run(
-                full_command,
-                check=True,
-                stdout=sys.stdout,
-                stderr=sys.stderr,
-                text=True)
-            print("Succès!")
-        except subprocess.CalledProcessError as e:
-            print(f"Erreur: {e}")
-            print(f"Sortie d'erreur: {e.stderr}")
-    else:
-        # Méthode avec barre de progression
-        try:
-            # Créer un fichier temporaire pour stocker la sortie
-            temp_output_file = "/tmp/rtabmap_output.txt"
+    # Créer le fichier de log avec la date courante
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-            # Rediriger toute la sortie vers le fichier temporaire
-            with open(temp_output_file, 'w') as f:
+    LOG_SUB_PATH_DIR = LOG_DIR / f"{sud_dir_log}"
+    LOG_SUB_PATH_DIR.mkdir(parents=True, exist_ok=True)
+    log_file = LOG_DIR / f"{sud_dir_log}" / f"{sud_dir_log}_{timestamp}.log"
+
+    if not show_progress:
+        # Méthode standard d'exécution avec redirection vers le log ET console
+        try:
+            with open(log_file, 'w') as f:
                 process = subprocess.Popen(
                     full_command,
-                    stdout=f,
+                    stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
-                    text=True
+                    text=True,
+                    bufsize=1,
+                    universal_newlines=True
                 )
+
+                for line in process.stdout:
+                    # Écrire dans le fichier de log
+                    f.write(line)
+                    f.flush()
+                    # Afficher aussi dans la console
+                    print(line, end='')
+
+                process.wait()
+
+            if process.returncode != 0:
+                raise subprocess.CalledProcessError(
+                    process.returncode, full_command)
+
+            print(f"\nSuccès! Log sauvegardé dans: {log_file}")
+        except subprocess.CalledProcessError as e:
+            print(f"Erreur: {e}")
+            # Afficher les dernières lignes du log en cas d'erreur
+            try:
+                with open(log_file, 'r') as f:
+                    last_lines = f.readlines()[-10:]
+                    print("Dernières lignes du log:")
+                    for line in last_lines:
+                        print(line.strip())
+            except:
+                pass
+    else:
+        try:
+            # Démarrer le processus avec redirection complète vers le fichier de log
+            process = subprocess.Popen(
+                full_command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                universal_newlines=True
+            )
 
             pbar = tqdm(desc="Initialisation...", unit="iter", ncols=100)
 
@@ -226,44 +258,47 @@ def execute_command(config_file, start_command=[], end_command=[], show_progress
             total_iters = None
             last_iter = 0
 
-            while process.poll() is None:
-                try:
-                    with open(temp_output_file, 'r') as f:
-                        content = f.read()
+            # Lire et enregistrer la sortie ligne par ligne
+            with open(log_file, 'w') as f:
+                for line in process.stdout:
+                    # Enregistrer la ligne dans le fichier de log
+                    f.write(line)
+                    f.flush()
 
-                    matches = list(iter_pattern.finditer(content))
-                    if matches:
-                        latest_match = matches[-1]
-                        current_iter = int(latest_match.group(1))
+                    # Afficher aussi dans la console (sous la barre de progression)
+                    tqdm.write(line.rstrip())
 
-                        if total_iters is None and len(matches) > 0:
-                            total_iters = int(latest_match.group(2))
+                    # Analyser la ligne pour la barre de progression
+                    match = iter_pattern.search(line)
+                    if match:
+                        current_iter = int(match.group(1))
+
+                        if total_iters is None:
+                            total_iters = int(match.group(2))
                             pbar.reset(total=total_iters)
                             pbar.set_description(f"Traitement RTAB-Map")
 
-                        last_line = content.splitlines()[-1] if content else ""
+                        # Extraire les informations supplémentaires de la ligne
                         info_match = re.search(
-                            r'Iteration|Processed \d+/\d+: (.+)', last_line)
+                            r'(?:Iteration|Processed) \d+/\d+[:\s]*(.+)', line.strip())
                         if info_match:
-                            last_info = info_match.group(1)
-                            pbar.set_description(f"RTAB-Map [{last_info}]")
+                            last_info = info_match.group(1).strip()
+                            if last_info:
+                                pbar.set_description(f"RTAB-Map [{last_info}]")
 
                         if current_iter > last_iter:
                             pbar.update(current_iter - last_iter)
                             last_iter = current_iter
-                except Exception as e:
-                    pass
 
-                import time
-                time.sleep(0.1)
-
+            # Attendre la fin du processus
+            process.wait()
             pbar.close()
 
             if process.returncode != 0:
                 print(
                     f"La commande a échoué avec le code de retour {process.returncode}")
                 try:
-                    with open(temp_output_file, 'r') as f:
+                    with open(log_file, 'r') as f:
                         last_lines = f.readlines()[-20:]
                         print("Dernières lignes de la sortie:")
                         for line in last_lines:
@@ -271,15 +306,13 @@ def execute_command(config_file, start_command=[], end_command=[], show_progress
                 except:
                     pass
             else:
-                print("Traitement RTAB-Map terminé avec succès!")
-
-            try:
-                os.remove(temp_output_file)
-            except:
-                pass
+                print(
+                    f"Traitement RTAB-Map terminé avec succès! Log sauvegardé dans: {log_file}")
 
         except Exception as e:
             print(f"Erreur lors de l'exécution: {e}")
+
+        # Note: Le fichier de log n'est plus supprimé pour conserver l'historique
 
 
 def generate_db():
@@ -317,7 +350,7 @@ def reprocess():
                     start_command=["rtabmap-reprocess"],
                     end_command=["/rtabmap_ws/rtabmap.db",
                                  "output_optimized.db"],
-                    show_progress=SHOW_PROGRESS)
+                    show_progress=SHOW_PROGRESS, sud_dir_log="reprocess")
 
 
 def export_point_cloud(output_type="--cloud"):
@@ -336,7 +369,7 @@ def export_point_cloud(output_type="--cloud"):
                     start_command=start_command,
                     end_command=[f"{output_type}",  "--output", "point",
                                  "/rtabmap_ws/output_optimized.db"],
-                    show_progress=SHOW_PROGRESS)
+                    show_progress=SHOW_PROGRESS, sud_dir_log="export")
 
 
 

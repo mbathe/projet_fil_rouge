@@ -20,20 +20,29 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Union
+from datetime import datetime
 
 # Configuration des constantes
 SCRIPT_DIR = Path(__file__).parent.absolute()
 PROJECT_ROOT = SCRIPT_DIR.parent
+LOG_MAIN_DIR = PROJECT_ROOT / "logs" / "main"
+LOG_RTABMAP_DIR = PROJECT_ROOT / "logs" / "rtabmap"
 RTABMAP_CONFIG_FILE = PROJECT_ROOT / "src" / "rtabmap_config.json"
 RTABMAP_PARAMS_DIR = PROJECT_ROOT / "src" / "rtabmap" / "params"
 OUTPUT_DEPTH_IMAGES = PROJECT_ROOT / "output" / "depth" / "images"
+OUTPUT_RTABMAP = PROJECT_ROOT / "output" / "rtabmap"
+
+# Création du dossier de logs et génération du nom de fichier avec timestamp
+LOG_MAIN_DIR.mkdir(parents=True, exist_ok=True)
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+LOG_FILE = LOG_MAIN_DIR / f"cartographie3d_{timestamp}.log"
 
 # Configuration du logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("cartographie3d.log"),
+        logging.FileHandler(LOG_FILE, encoding='utf-8'),
         logging.StreamHandler(sys.stdout)
     ]
 )
@@ -74,8 +83,8 @@ class CartographyPaths:
     depth_folder: Path
     calibration_file: Path
     rgb_timestamps: Path
-    depth_timestamps: Path
     output_folder: Path
+    depth_timestamps: Path
     video_file: Path
 
     def __post_init__(self) -> None:
@@ -112,7 +121,6 @@ class PathValidator:
         elif source_type == SourceType.VIDEO:
             PathValidator._validate_video_source(paths)
 
-        # Création du dossier de sortie
         try:
             paths.output_folder.mkdir(parents=True, exist_ok=True)
             logger.debug(
@@ -124,17 +132,14 @@ class PathValidator:
     @staticmethod
     def _validate_image_source(paths: CartographyPaths) -> None:
         """Valide les chemins pour une source de type IMAGE."""
-        # Validation du fichier de calibration
         if not paths.calibration_file.exists():
             raise CartographieError(
                 f"Fichier de calibration manquant: {paths.calibration_file}")
 
-        # Validation du dossier d'images
         if not paths.image_folder.exists():
             raise CartographieError(
                 f"Dossier d'images inexistant: {paths.image_folder}")
 
-        # Vérification que le dossier contient des images
         image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif'}
         image_files = [f for f in paths.image_folder.iterdir()
                        if f.is_file() and f.suffix.lower() in image_extensions]
@@ -146,7 +151,6 @@ class PathValidator:
         logger.info(
             f"Validation réussie: {len(image_files)} images trouvées dans {paths.image_folder}")
 
-        # Validation du fichier de timestamps RGB
         if not paths.rgb_timestamps.exists():
             logger.warning(
                 f"Fichier de timestamps RGB manquant: {paths.rgb_timestamps}")
@@ -154,17 +158,14 @@ class PathValidator:
     @staticmethod
     def _validate_image_with_depth_source(paths: CartographyPaths) -> None:
         """Valide les chemins pour une source de type IMAGE_WITH_DEPTH."""
-        # Validation du fichier de calibration
         if not paths.calibration_file.exists():
             raise CartographieError(
                 f"Fichier de calibration manquant: {paths.calibration_file}")
 
-        # Validation du dossier d'images RGB
         if not paths.image_folder.exists():
             raise CartographieError(
                 f"Dossier d'images RGB inexistant: {paths.image_folder}")
 
-        # Validation du dossier de profondeur
         if not paths.depth_folder.exists():
             raise CartographieError(
                 f"Dossier de profondeur inexistant: {paths.depth_folder}")
@@ -201,17 +202,14 @@ class PathValidator:
     @staticmethod
     def _validate_video_source(paths: CartographyPaths) -> None:
         """Valide les chemins pour une source de type VIDEO."""
-        # Validation du fichier de calibration
         if not paths.calibration_file.exists():
             raise CartographieError(
                 f"Fichier de calibration manquant: {paths.calibration_file}")
 
-        # Validation du fichier vidéo
         if not paths.video_file.exists():
             raise CartographieError(
                 f"Fichier vidéo inexistant: {paths.video_file}")
 
-        # Vérification de l'extension du fichier vidéo
         video_extensions = {'.mp4', '.avi', '.mov',
                             '.mkv', '.wmv', '.flv', '.webm'}
         if paths.video_file.suffix.lower() not in video_extensions:
@@ -221,7 +219,6 @@ class PathValidator:
         logger.info(
             f"Validation réussie: fichier vidéo trouvé - {paths.video_file}")
 
-        # Création du dossier d'images pour l'extraction des frames
         try:
             paths.image_folder.mkdir(parents=True, exist_ok=True)
             logger.debug(
@@ -283,6 +280,7 @@ class DockerCommandBuilder:
             self.paths.output_folder: "/rtabmap_ws/output/rtabmap",
             self.paths.calibration_file: "/rtabmap_ws/rtabmap_calib.yaml",
             RTABMAP_CONFIG_FILE: "/rtabmap_ws/config.json",
+            LOG_RTABMAP_DIR: "/rtabmap_ws/logs",
         }
 
         # Ajout des fichiers de paramètres
@@ -454,7 +452,7 @@ class RTAB3DMapper:
                 calibration_file=args.calibration_file,
                 rgb_timestamps=args.rgb_timestamps,
                 depth_timestamps=args.depth_timestamps,
-                output_folder=args.output_folder,
+                output_folder=OUTPUT_RTABMAP,
                 video_file=args.video_file
             )
             self.config = RTABMapConfig(
@@ -514,11 +512,9 @@ class RTAB3DMapper:
             # Écriture de la configuration
             ConfigurationManager.write_config(self.config)
 
-            # Construction et exécution de la commande Docker
             command = self.docker_builder.build_command()
             self._execute_docker_command(command)
 
-            # Vérification des sorties
             verification_results = OutputVerifier.verify_outputs(
                 self.paths.output_folder)
 
@@ -653,11 +649,6 @@ class CommandLineParser:
         # Groupe des paramètres de sortie
         output_group = parser.add_argument_group("Paramètres de sortie")
         output_group.add_argument(
-            "--output_folder", type=str,
-            default=str(PROJECT_ROOT / "output/rtabmap"),
-            help="Dossier de sortie pour les résultats de cartographie 3D"
-        )
-        output_group.add_argument(
             "--debug", action="store_true",
             help="Active les messages de débogage détaillés"
         )
@@ -688,6 +679,7 @@ def setup_logging(debug: bool = False) -> None:
         logger.debug("Mode debug activé")
 
     logger.info("Système de logging initialisé")
+    logger.info(f"Fichier de log: {LOG_FILE}")
 
 
 def main() -> int:
@@ -706,30 +698,49 @@ def main() -> int:
         # Configuration du logging
         setup_logging(args.debug)
 
+        # Log de démarrage avec informations sur l'exécution
+        logger.info("="*60)
+        logger.info("DÉMARRAGE DE LA CARTOGRAPHIE 3D RTAB-MAP")
+        logger.info(f"Timestamp d'exécution: {timestamp}")
+        logger.info(f"Fichier de log: {LOG_FILE}")
+        logger.info("="*60)
+
         # Création du dossier de sortie principal
-        output_dir = Path(args.output_folder)
+        output_dir = Path(OUTPUT_RTABMAP)
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Affichage des paramètres principaux
         logger.info(f"Source: {args.source}")
-        logger.info(f"Dossier d'images: {args.image_folder}")
-        logger.info(f"Dossier de sortie: {args.output_folder}")
+        logger.info(f"Dossier d'images: {OUTPUT_RTABMAP}")
+        logger.info(f"Dossier de sortie: {OUTPUT_RTABMAP}")
 
         # Initialisation et exécution du processus de cartographie
         mapper = RTAB3DMapper(args)
         mapper.process_source()
 
         logger.info("Traitement terminé avec succès")
+        logger.info("="*60)
+        logger.info("FIN DE L'EXÉCUTION")
+        logger.info("="*60)
         return 0
 
     except CartographieError as e:
         logger.error(f"Erreur de cartographie: {e}")
+        logger.error("="*60)
+        logger.error("ÉCHEC DE L'EXÉCUTION")
+        logger.error("="*60)
         return 1
     except KeyboardInterrupt:
         logger.info("Interruption par l'utilisateur")
+        logger.info("="*60)
+        logger.info("ARRÊT PAR L'UTILISATEUR")
+        logger.info("="*60)
         return 130
     except Exception as e:
         logger.exception(f"Erreur inattendue: {e}")
+        logger.error("="*60)
+        logger.error("ERREUR INATTENDUE")
+        logger.error("="*60)
         return 1
 
 

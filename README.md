@@ -172,8 +172,7 @@ python3 <PROJECT_ROOT>/src/main.py \
   --depth_folder "<PROJECT_ROOT>/data/depth" \
   --calibration_file "<PROJECT_ROOT>/data/rtabmap_calib.yaml" \
   --rgb_timestamps "<PROJECT_ROOT>/data/img_timestamps.csv" \
-  --depth_timestamps "<PROJECT_ROOT>/data/depth_timestamps.csv" \
-  --output_folder "<PROJECT_ROOT>/output"
+  --depth_timestamps "<PROJECT_ROOT>/data/depth_timestamps.csv"
 ```
 
 For example, if your project is located at `/home/user/cartographie3d`, all paths should start with that root.
@@ -189,19 +188,19 @@ python3 <PROJECT_ROOT>/projet_fil_rouge/src/main.py
 ### Video Mode (from a video source)
 
 ```bash
-python src/main.py --source video --image_folder ./path/to/video.mp4 --output_folder ./output_folder --frequence 5
+python src/main.py --source video --image_folder ./path/to/video.mp4 --frequence 5
 ```
 
 ### Image Mode (RGB without depth)
 
 ```bash
-python src/main.py --source image --image_folder ./path/to/images --output_folder ./output_folder
+python src/main.py --source image --image_folder ./path/to/images
 ```
 
 ### RGB-D Mode (images with depth)
 
 ```bash
-python src/main.py --source image_with_depth --image_folder ./path/to/images/rgb --depth_folder ./path/to/images/depth --output_folder ./output_folder
+python src/main.py --source image_with_depth --image_folder ./path/to/images/rgb --depth_folder ./path/to/images/depth
 ```
 
 ### Available Arguments
@@ -214,7 +213,6 @@ Here is the full list of arguments accepted by the script:
 --calibration_file     Path to the camera calibration file (default: "./rtabmap_calib.yaml")
 --rgb_timestamps       Path to the RGB timestamps CSV file (default: "./img_timestamps.csv")
 --depth_timestamps     Path to the depth timestamps CSV file (default: "./depth_timestamps.csv")
---output_folder        Output folder for all results (default: "./output_folder")
 --source               Source to use: "image" (RGB without depth), "image_with_depth" (RGB-D), "video" (video)
                        (default: "image_with_depth")
 --frequence            Frame extraction frequency from video in Hz (default: 20)
@@ -224,17 +222,17 @@ Here is the full list of arguments accepted by the script:
 
 #### Video processing at 10 Hz
 ```bash
-python src/main.py --source video --image_folder ./data/video.mp4 --output_folder ./results --frequence 10
+python src/main.py --source video --image_folder ./data/video.mp4 --frequence 10
 ```
 
 #### RGB image processing with depth estimation
 ```bash
-python src/main.py --source image --image_folder ./data/rgb_images --output_folder ./results
+python src/main.py --source image --image_folder ./data/rgb_images
 ```
 
 #### Existing RGB-D image processing with timestamp files
 ```bash
-python src/main.py --source image_with_depth --image_folder ./data/rgb --depth_folder ./data/depth --rgb_timestamps ./data/rgb_timestamps.csv --depth_timestamps ./data/depth_timestamps.csv --output_folder ./results
+python src/main.py --source image_with_depth --image_folder ./data/rgb --depth_folder ./data/depth --rgb_timestamps ./data/rgb_timestamps.csv --depth_timestamps ./data/depth_timestamps.csv
 ```
 
 ## Data Format
