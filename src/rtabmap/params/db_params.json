@@ -1,13 +1,4 @@
 {
-  "--Odom/Strategy": "1",
-  "--Mem/IncrementalMemory": "true",
-  
-
-  "--General/cloudFiltering": "true",
-  "--General/cloudFilteringRadius": "0.5",
-  "--GICP/CloudFilteringAngle": "30",
-  
-
   "--Grid/Sensor": "1",
   "--Mem/LaserScanNormalK": "20",
   "--Mem/LaserScanNormalRadius": "0.3",
@@ -15,21 +6,18 @@
   
   "--Icp/PointToPlane": "true",
   
-  "--Vis/MinInliers": "8",
-  "--Vis/CorType": "1",
-  "--Vis/MaxFeatures": "1000",
-  "--SURF/HessianThreshold": "200",
-  
-  "--RGBD/LinearUpdate": "0.1",       
-  "--RGBD/AngularUpdate": "0.1",      
-  
+  "Grid/Sensor": "1",
+  "Mem/LaserScanNormalK": "20",
+  "Mem/LaserScanNormalRadius": "0.3",
 
-  "--OdomF2M/MaxSize": "2000",
-  "--Odom/MaxFeatures": "1000",
-  "--Odom/MinInliers": "10",
-  
+  "Rtabmap/DetectionRate": "0",
+  "Rtabmap/ImageBufferSize": "0",
 
-  "--RGBD/OptimizeMaxError": "0.3",
-  "--RGBD/ProximityBySpace": "true",
-  "--RGBD/ProximityMaxGraphDepth": "50"
+  "Odom/Strategy": "1",
+  "Odom/ResetCountdown": "1",
+  "Odom/ImageBufferSize": "0",
+
+  "Reg/Strategy": "2",
+
+  "Icp/PointToPlane": "true"
 }
