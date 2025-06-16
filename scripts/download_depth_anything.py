@@ -25,43 +25,54 @@ LOG_DIR = PROJECT_ROOT / "logs" / "scripts"
 
 def setup_logging():
     """Configure le système de logging avec fichier et console"""
-    # Créer le répertoire de logs s'il n'existe pas
-    log_dir = Path(PROJECT_ROOT)
-    log_dir.mkdir(exist_ok=True)
+    try:
+        # Créer le répertoire de logs s'il n'existe pas
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Nom du fichier de log avec timestamp
-    log_filename = log_dir / \
-        f"download_depth_anything_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+        # Nom du fichier de log avec timestamp
+        log_filename = LOG_DIR / \
+            f"download_depth_anything_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 
-    # Configuration du logger principal
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
+        # Configuration du logger principal
+        logger = logging.getLogger()
+        logger.setLevel(logging.DEBUG)
 
-    # Formatter pour les logs
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
+        # Supprimer les handlers existants pour éviter les doublons
+        for handler in logger.handlers[:]:
+            logger.removeHandler(handler)
 
-    # Handler pour fichier avec rotation
-    file_handler = logging.handlers.RotatingFileHandler(
-        log_filename, maxBytes=10*1024*1024, backupCount=5
-    )
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(formatter)
+        # Formatter pour les logs
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
 
-    # Handler pour console
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    console_formatter = logging.Formatter('%(levelname)s - %(message)s')
-    console_handler.setFormatter(console_formatter)
+        # Handler pour fichier avec rotation
+        file_handler = logging.handlers.RotatingFileHandler(
+            log_filename, maxBytes=10*1024*1024, backupCount=5
+        )
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(formatter)
 
-    # Ajout des handlers
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
+        # Handler pour console
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        console_formatter = logging.Formatter('%(levelname)s - %(message)s')
+        console_handler.setFormatter(console_formatter)
 
-    logging.info(f"Logging configuré - Fichier: {log_filename}")
-    return logger
+        # Ajout des handlers
+        logger.addHandler(file_handler)
+        logger.addHandler(console_handler)
+
+        logging.info(f"Logging configuré - Fichier: {log_filename}")
+        return logger
+    except Exception as e:
+        print(f"Erreur lors de la configuration du logging: {e}")
+        # Configuration minimale en cas d'erreur
+        logging.basicConfig(level=logging.INFO,
+                            format='%(levelname)s - %(message)s')
+        logging.error(f"Configuration du logging échouée: {e}")
+        return logging.getLogger()
 
 def run_command(cmd, cwd=None):
     """Exécute une commande shell et gère les erreurs"""
@@ -125,17 +136,6 @@ def download_file_with_progress(url, destination):
         return False
 
 
-def check_git_installed():
-    """Vérifie si Git est installé"""
-    try:
-        subprocess.run(["git", "--version"], check=True, capture_output=True)
-        logging.info("Git est installé et disponible")
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        logging.error("Git n'est pas installé ou non disponible")
-        return False
-
-
 def download_model_weights(project_path):
     """
     Télécharge les poids du modèle Depth Anything V2
@@ -151,18 +151,24 @@ def download_model_weights(project_path):
     checkpoints_dir.mkdir(exist_ok=True)
     logging.debug(f"Répertoire checkpoints créé: {checkpoints_dir}")
 
-    model_small_url = "https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Hypersim-Small/resolve/main/depth_anything_v2_metric_hypersim_vits.pth?download=true"
-    model_base_url = "https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Hypersim-Base/resolve/main/depth_anything_v2_metric_hypersim_vitb.pth?download=true"
-    model_large_url = "https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Hypersim-Large/resolve/main/depth_anything_v2_metric_hypersim_vitl.pth?download=true"
+    # URLs des modèles
+    model_urls = {
+        "small": "https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Hypersim-Small/resolve/main/depth_anything_v2_metric_hypersim_vits.pth?download=true",
+        "base": "https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Hypersim-Base/resolve/main/depth_anything_v2_metric_hypersim_vitb.pth?download=true",
+        "large": "https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Hypersim-Large/resolve/main/depth_anything_v2_metric_hypersim_vitl.pth?download=true"
+    }
+
+    # Noms des fichiers correspondants
+    model_files = {
+        "small": "depth_anything_v2_metric_hypersim_vits.pth",
+        "base": "depth_anything_v2_metric_hypersim_vitb.pth",
+        "large": "depth_anything_v2_metric_hypersim_vitl.pth"
+    }
 
     # URL et destination du fichier de poids
-    model_url = model_small_url if DEPTH_ANYTHING_TYPE == "small" else (
-        model_base_url if DEPTH_ANYTHING_TYPE == "base" else model_large_url
-    )
-    model_file = checkpoints_dir / "depth_anything_v2_metric_hypersim_vits.pth" if DEPTH_ANYTHING_TYPE == "small" else (
-        checkpoints_dir / "depth_anything_v2_metric_hypersim_vitb.pth" if DEPTH_ANYTHING_TYPE == "base" else checkpoints_dir /
-        "depth_anything_v2_metric_hypersim_vitl.pth"
-    )
+    model_url = model_urls.get(DEPTH_ANYTHING_TYPE, model_urls["small"])
+    model_file = checkpoints_dir / \
+        model_files.get(DEPTH_ANYTHING_TYPE, model_files["small"])
 
     logging.info(f"Type de modèle sélectionné: {DEPTH_ANYTHING_TYPE}")
     logging.debug(f"URL du modèle: {model_url}")
@@ -211,13 +217,6 @@ def download_depth_anything_v2(target_directory="./src/depth/DepthAnythingV2"):
     """
     logging.info(
         f"Début du téléchargement de Depth Anything V2 vers: {target_directory}")
-
-    # Vérification de Git
-    if not check_git_installed():
-        logging.error("Git n'est pas installé sur le système")
-        print("Git n'est pas installé sur votre système.")
-        print("Veuillez installer Git pour continuer.")
-        return False
 
     # Création du chemin absolu
     target_path = Path(target_directory).resolve()
@@ -306,35 +305,49 @@ def main():
 
     logging.info("=" * 50)
     logging.info("Début du script de téléchargement Depth Anything V2")
+    logging.info(f"Type de modèle: {DEPTH_ANYTHING_TYPE}")
+    logging.info(f"Répertoire du script: {SCRIPT_DIR}")
+    logging.info(f"Racine du projet: {PROJECT_ROOT}")
+    logging.info(f"Répertoire des logs: {LOG_DIR}")
     logging.info("=" * 50)
 
     print("Script de téléchargement Depth Anything V2")
     print("=" * 50)
 
-    # Demande du répertoire de destination
-    default_dir = "./src/depth/DepthAnythingV2"
-    user_dir = input(
+    try:
+        # Demande du répertoire de destination
+        default_dir = "./src/depth/DepthAnythingV2"
+        user_dir = input(
             f"Répertoire de destination (défaut: {default_dir}): ").strip() or default_dir
 
-    logging.info(f"Répertoire de destination choisi: {user_dir}")
+        logging.info(f"Répertoire de destination choisi: {user_dir}")
 
-    # Téléchargement
-    success = download_depth_anything_v2(user_dir)
+        # Téléchargement
+        success = download_depth_anything_v2(user_dir)
 
-    if success:
-        logging.info("Téléchargement terminé avec succès")
-        print("\nTéléchargement terminé avec succès !")
-        print(f"Le projet se trouve dans: {Path(user_dir).resolve()}")
-        print("\nProchaines étapes suggérées:")
-        print("   1. Lire le README.md pour les instructions d'utilisation")
-        print("   2. Vérifier les requirements système")
-        print("   3. Télécharger les modèles pré-entraînés si nécessaire")
-    else:
-        logging.error("Échec du téléchargement")
-        print("\nÉchec du téléchargement.")
+        if success:
+            logging.info("Téléchargement terminé avec succès")
+            print("\nTéléchargement terminé avec succès !")
+            print(f"Le projet se trouve dans: {Path(user_dir).resolve()}")
+            print("\nProchaines étapes suggérées:")
+            print("   1. Lire le README.md pour les instructions d'utilisation")
+            print("   2. Vérifier les requirements système")
+            print("   3. Télécharger les modèles pré-entraînés si nécessaire")
+        else:
+            logging.error("Échec du téléchargement")
+            print("\nÉchec du téléchargement.")
+            sys.exit(1)
+
+    except KeyboardInterrupt:
+        logging.warning("Script interrompu par l'utilisateur (Ctrl+C)")
+        print("\nScript interrompu par l'utilisateur.")
         sys.exit(1)
-
-    logging.info("Fin du script")
+    except Exception as e:
+        logging.error(f"Erreur inattendue: {e}", exc_info=True)
+        print(f"\nErreur inattendue: {e}")
+        sys.exit(1)
+    finally:
+        logging.info("Fin du script")
 
 
 if __name__ == "__main__":
