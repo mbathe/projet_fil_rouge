@@ -10,6 +10,8 @@ Date: 2025-05-29
 Version: 2.0.0
 """
 
+from utils import create_or_clean_dir
+from utils import extract_frames
 import json
 import logging
 import os
@@ -29,13 +31,15 @@ LOG_MAIN_DIR = PROJECT_ROOT / "logs" / "main"
 LOG_RTABMAP_DIR = PROJECT_ROOT / "logs" / "rtabmap"
 RTABMAP_CONFIG_FILE = PROJECT_ROOT / "src" / "rtabmap_config.json"
 RTABMAP_PARAMS_DIR = PROJECT_ROOT / "src" / "rtabmap" / "params"
-OUTPUT_DEPTH_IMAGES = PROJECT_ROOT / "output" / "depth" / "images"
+OUTPUT_DEPTH_IMAGES = PROJECT_ROOT / "output" / "depth"
+OUTPUT_IMAGES = PROJECT_ROOT / "output" / "images"
 OUTPUT_RTABMAP = PROJECT_ROOT / "output" / "rtabmap"
 
 # Création du dossier de logs et génération du nom de fichier avec timestamp
 LOG_MAIN_DIR.mkdir(parents=True, exist_ok=True)
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 LOG_FILE = LOG_MAIN_DIR / f"cartographie3d_{timestamp}.log"
+
 
 # Configuration du logging
 logging.basicConfig(
@@ -385,7 +389,22 @@ class SourceProcessor:
         logger.info(
             f"Traitement de la vidéo: {self.paths.image_folder} à {self.frequency}Hz")
         # TODO: Implémenter l'extraction des frames et estimation de profondeur
-        logger.warning("Traitement vidéo non encore implémenté")
+        os.makedirs(OUTPUT_IMAGES, exist_ok=True)
+        try:
+            extract_frames(
+                video_path=self.paths.video_file,
+                output_dir=OUTPUT_IMAGES,
+                frequency=self.frequency
+            )
+            logger.info(
+                f"Frames extraites dans: {self.paths.image_folder}")
+            self.paths.image_folder = OUTPUT_IMAGES
+            self.process_rgb_images()
+        except Exception as e:
+            logger.error(f"Erreur lors de l'extraction des frames: {e}")
+            raise CartographieError(
+                f"Échec de l'extraction des frames de la vidéo: {e}")
+
 
     def process_rgb_images(self) -> None:
         """
@@ -587,38 +606,38 @@ class CommandLineParser:
         input_group = parser.add_argument_group("Paramètres d'entrée")
         input_group.add_argument(
             "--image_folder", type=str,
-            default=str(PROJECT_ROOT / "data/dataset/deer_walk/images"),
+            default=str(PROJECT_ROOT / "data/datasets/deer_walk/cam0/data"),
             help="Dossier contenant les images RGB"
         )
         input_group.add_argument(
             "--depth_folder", type=str,
-            default=str(PROJECT_ROOT / "data/dataset/deer_walk/depth"),
+            default=str(PROJECT_ROOT / "data/datasets/deer_walk/depth0/data"),
             help="Dossier contenant les images avec profondeur"
         )
 
         input_group.add_argument(
             "--video_file", type=str,
-            default=str(PROJECT_ROOT / "data/dataset/deer_walk/video.mp4"),
+            default=str(PROJECT_ROOT / "data/datasets/Dear_Walking.mp4"),
             help="Chemin vers le fichier vidéo"
         )
 
         input_group.add_argument(
             "--calibration_file", type=str,
             default=str(PROJECT_ROOT /
-                        "data/dataset/deer_walk/rtabmap_calib.yaml"),
+                        "data/datasets/deer_walk/cam0/rtabmap_calib.yaml"),
             help="Chemin vers le fichier de calibration"
         )
 
         input_group.add_argument(
             "--rgb_timestamps", type=str,
             default=str(PROJECT_ROOT /
-                        "data/dataset/deer_walk/img_timestamps.csv"),
+                        "data/datasets/deer_walk/cam0/data.csv"),
             help="Chemin vers le fichier de timestamps RGB"
         )
         input_group.add_argument(
             "--depth_timestamps", type=str,
             default=str(PROJECT_ROOT /
-                        "data/dataset/deer_walk/depth_timestamps.csv"),
+                        "data/datasets/deer_walk/depth0/data.csv"),
             help="Chemin vers le fichier de timestamps profondeur"
         )
 
@@ -694,6 +713,12 @@ def main() -> int:
         args = CommandLineParser.parse_arguments()
         
         args.depth_image_folder = args.depth_folder if args.source == SourceType.IMAGE_WITH_DEPTH else OUTPUT_DEPTH_IMAGES
+        if args.source == SourceType.VIDEO:
+            args.image_folder = OUTPUT_IMAGES
+            args.depth_folder = OUTPUT_DEPTH_IMAGES
+            create_or_clean_dir(OUTPUT_RTABMAP)
+            create_or_clean_dir(OUTPUT_DEPTH_IMAGES)
+
 
         # Configuration du logging
         setup_logging(args.debug)
