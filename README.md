@@ -1,15 +1,3 @@
-# À faire : 
-
-
-* Log à la place des prints
-* Verser les logs dans un fichier (pas uniquement les erreurs)
-* Mettre des variables d'environnement pour tout ce qui est possible
-* Générer une doc python
-* Filmer une salle réélle (~40sec)
-* Retrouver et tester avec les bons paramètres de rtabmap
-* Adapter une version sans docker (option ou var env) pour MAC/Windows
-* Supprimer la branche temporaire SANS push les changements mais récuperer script_rtabmap.py
-
 # 3D Mapping Project with RTAB-Map
 
 ![](https://github.com/mbathe/projet_fil_rouge/blob/main/data/deer_walk_3dmap.png)
