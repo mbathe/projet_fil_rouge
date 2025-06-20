@@ -180,5 +180,6 @@ depth/DepthAnythingV2/
 weight/
 output/
 src/depth/DepthAnythingV2/
-data/dataset/
+data/datasets/
 data/depth/
+data/datasets
