@@ -95,11 +95,11 @@ def convert_to_timestamps(img_path=None, depth_path=None, img_timestamps_path=No
     # Process RGB images
     if img_path and img_timestamps_path:
         img_timestamps_df = pd.read_csv(img_timestamps_path)
-        process_files(img_path, img_timestamps_df, label="RGB")
+        # process_files(img_path, img_timestamps_df, label="RGB")
     
     if depth_path and depth_timestamps_path:
         depth_timestamps_df = pd.read_csv(depth_timestamps_path)
-        process_files(depth_path, depth_timestamps_df, label="Depth")
+        # process_files(depth_path, depth_timestamps_df, label="Depth")
 
 
 def validate_csv_columns(csv_path):
@@ -368,7 +368,7 @@ def export_point_cloud(output_type="--cloud"):
     execute_command(EXPORT_PARAMS_FILES,
                     start_command=start_command,
                     end_command=[f"{output_type}",  "--output", "point",
-                                 "/rtabmap_ws/output_optimized.db"],
+                                 "/rtabmap_ws/rtabmap.db"],
                     show_progress=SHOW_PROGRESS, sud_dir_log="export")
 
 
@@ -385,7 +385,8 @@ def main(config):
     output_type = "--mesh" # Exporter un mesh vous pouvez changer en "--cloud" pour exporter un nuage de points
     generate_db()
     if config.get("reprocess", True):
-        reprocess()
+        # reprocess()
+        print("test...")
     export_point_cloud(output_type=config.get("export_format", output_type))
 
    
@@ -421,7 +422,8 @@ if __name__ == "__main__":
     
     print("\n===== Copying Results =====")
     os.makedirs("/rtabmap_ws/output/rtabmap", exist_ok=True)
-    shutil.copy2("/rtabmap_ws/output_optimized.db",
+    # shutil.copy2("/rtabmap_ws/output_optimized.db","/rtabmap_ws/output/rtabmap/rtabmap.db")
+    shutil.copy2("/rtabmap_ws/rtabmap.db",
                  "/rtabmap_ws/output/rtabmap/rtabmap.db")
     shutil.copy2(f"/rtabmap_ws/point_{extension}.ply",
                  f"/rtabmap_ws/output/rtabmap/point_{extension}.ply")

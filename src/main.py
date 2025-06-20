@@ -394,7 +394,9 @@ class SourceProcessor:
             extract_frames(
                 video_path=self.paths.video_file,
                 output_dir=OUTPUT_IMAGES,
-                frequency=self.frequency
+                frequency=self.frequency,
+                enhance_images=True,
+                rotation="cw"
             )
             logger.info(
                 f"Frames extraites dans: {self.paths.image_folder}")
@@ -617,14 +619,14 @@ class CommandLineParser:
 
         input_group.add_argument(
             "--video_file", type=str,
-            default=str(PROJECT_ROOT / "data/datasets/Dear_Walking.mp4"),
+            default=str(PROJECT_ROOT / "data/datasets/Deer_Walking.mp4"),
             help="Chemin vers le fichier vidéo"
         )
 
         input_group.add_argument(
             "--calibration_file", type=str,
             default=str(PROJECT_ROOT /
-                        "data/datasets/deer_walk/cam0/rtabmap_calib.yaml"),
+                        "data/datasets/deer_walk/calib_deer_robot.yaml"),
             help="Chemin vers le fichier de calibration"
         )
 
@@ -651,7 +653,7 @@ class CommandLineParser:
             help="Source à utiliser"
         )
         processing_group.add_argument(
-            "--frequence", type=int, default=20,
+            "--frequence", type=int, default=30,
             help="Fréquence d'images à extraire (Hz) pour un flux vidéo"
         )
         processing_group.add_argument(
@@ -712,13 +714,14 @@ def main() -> int:
         # Parsing des arguments
         args = CommandLineParser.parse_arguments()
         
-        args.depth_image_folder = args.depth_folder if args.source == SourceType.IMAGE_WITH_DEPTH else OUTPUT_DEPTH_IMAGES
-        if args.source == SourceType.VIDEO:
+        args.depth_image_folder = args.depth_folder if SourceType(
+            args.source) == SourceType.IMAGE_WITH_DEPTH else OUTPUT_DEPTH_IMAGES
+
+        if SourceType(args.source) == SourceType.VIDEO:
             args.image_folder = OUTPUT_IMAGES
             args.depth_folder = OUTPUT_DEPTH_IMAGES
-            create_or_clean_dir(OUTPUT_RTABMAP)
+            create_or_clean_dir(OUTPUT_IMAGES)
             create_or_clean_dir(OUTPUT_DEPTH_IMAGES)
-
 
         # Configuration du logging
         setup_logging(args.debug)
