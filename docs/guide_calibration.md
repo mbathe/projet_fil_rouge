@@ -14,3 +14,9 @@ Pour que la calibration fonctionne avec précision, suivez ces règles :
 10. **Utilisez une bonne résolution** : pour une meilleure précision (.jpg ou .png).
 
 Voir le [pattern OpenCV](https://github.com/opencv/opencv/blob/master/doc/pattern.png).
+
+Pour l'impression du pattern :
+1. **Imprimer l'image en taille réelle** : éviter le redimensionnement à l'impression.
+2. **Vérifier la taille des carrés du damier** : paramètre --sqr_size à fournir au script calibrate.py.
+
+Vous pouvez utiliser un autre damier, dans ce cas, il faudra également modifier les paramètres --cols et --rows du script calibrate.py.
