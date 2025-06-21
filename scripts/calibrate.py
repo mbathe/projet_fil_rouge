@@ -109,7 +109,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description=(
             "Génération du fichier de calibration d'une caméra via un damier : https://github.com/opencv/opencv/blob/master/doc/pattern.png \n"
-            "Pour les images du damier, suivre le tutoriel suivant : link \n"
+            "Pour les images du damier, suivre le tutoriel suivant : https://github.com/mbathe/projet_fil_rouge/blob/main/docs/guide_calibration.md \n"
             ),
         epilog=
             ("Exemples : \n"
