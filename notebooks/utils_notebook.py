@@ -116,6 +116,23 @@ def generate_3d_walls_from_pointcloud(pcd_path, cell_size=0.05, tol_xy=0.30, min
     mesh_path = "mur3D_hauteur_reelle.ply"
     o3d.io.write_triangle_mesh(mesh_path, mesh)
     print(" Mesh exporté :", os.path.abspath(mesh_path))
+    try:
+        import plotly.graph_objects as go
+        v = np.asarray(mesh.vertices)
+        t = np.asarray(mesh.triangles)
+        fig = go.Figure(data=[
+            go.Mesh3d(
+                x=v[:,0], y=v[:,1], z=v[:,2],
+                i=t[:,0], j=t[:,1], k=t[:,2],
+                color='lightblue', opacity=0.6
+            )
+        ])
+        fig.update_layout(scene=dict(aspectmode='data'),
+                        title="Mur 3D (hauteurs réelles)")
+        fig.show()
+    except Exception as e:
+        print("Plotly non installé ou erreur de rendu :", e)
+
 
     return mesh
 
