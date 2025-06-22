@@ -4,6 +4,10 @@ import plotly.graph_objects as go
 import math
 from tqdm import tqdm
 from collections import defaultdict
+from sklearn.cluster import DBSCAN,KMeans
+import matplotlib.pyplot as plt
+import cv2
+
 
 """Loading and visualization functions
 """
@@ -294,3 +298,231 @@ def height_map(x, y, z):
     img_height = (img_height - img_height.min()) / \
         (img_height.max() - img_height.min())
     return img_height
+
+def filter_by_height(point_cloud, min_height=None, max_height=None):
+    """
+    Filters the point cloud by removing points outside the specified height range.
+    Parameters:
+        point_cloud (np.ndarray): Nx3 array of points (x, y, z).
+        min_height (float, optional): Minimum height to keep. Defaults to the minimum z value.
+        max_height (float, optional): Maximum height to keep. Defaults to the maximum z value.
+
+    Returns:
+        np.ndarray: Filtered point cloud.
+    """
+    if max_height is None:
+        max_height = np.max(point_cloud[:, 2])
+    if min_height is None:
+        min_height = np.min(point_cloud[:, 2])
+
+    mask = (point_cloud[:, 2] >= min_height) & (point_cloud[:, 2] <= max_height)
+    filtered_cloud = point_cloud[mask]
+    return filtered_cloud
+
+
+def filter_by_distance(point_cloud, distance_threshold=0.1):
+    """
+    Filters the point cloud by removing points that are too close to the mean.
+
+    Parameters:
+        point_cloud (np.ndarray): Nx3 array of points (x, y, z).
+        distance_threshold (float): Minimum distance from the mean to keep a point.
+
+    Returns:
+        np.ndarray: Filtered point cloud.
+    """
+    distances = np.linalg.norm(point_cloud - np.mean(point_cloud, axis=0), axis=1)
+    mask = distances > distance_threshold
+    filtered_cloud = point_cloud[mask]
+    return filtered_cloud
+
+def project_to_grid(point_cloud, cell_size=0.1):
+    """
+    Projects the point cloud onto a 2D grid in the XY plane.
+
+    Parameters:
+        point_cloud (np.ndarray): Nx3 array of points (x, y, z).
+        cell_size (float): Size of each grid cell in meters.
+
+    Returns:
+        np.ndarray: 2D grid representation of the point cloud.
+    """
+    x = point_cloud[:, 0]
+    y = point_cloud[:, 1]
+
+    xmin, xmax = x.min(), x.max()
+    ymin, ymax = y.min(), y.max()
+
+    grid_width = int(np.ceil((xmax - xmin) / cell_size))
+    grid_height = int(np.ceil((ymax - ymin) / cell_size))
+
+    grid = np.zeros((grid_height, grid_width), dtype=np.uint8)
+
+    for xi, yi in zip(x, y):
+        col = int((xi - xmin) / cell_size)
+        row = int((yi - ymin) / cell_size)
+        
+        # Ensure indices are within bounds
+        if 0 <= row < grid_height and 0 <= col < grid_width:
+            grid[row, col] = 255
+
+    return grid
+
+def compute_cell_size(point_cloud, factor=0.01):
+    """
+    Computes an appropriate cell size for the grid based on the point cloud dimensions.
+
+    Parameters:
+        point_cloud (np.ndarray): Nx3 array of points (x, y, z).
+        factor (float): Proportion of the total cloud dimension for cell size.
+
+    Returns:
+        float: Computed cell size.
+    """
+    x = point_cloud[:, 0]
+    y = point_cloud[:, 1]
+    width = x.max() - x.min()
+    height = y.max() - y.min()
+    cell_size = max(width, height) * factor
+    return cell_size
+
+def extract_largest_objects_from_voxels(voxel_points, density_threshold=1, eps=15, min_samples=3):
+    """
+    Identifies the largest objects in the voxelized point cloud based on point density.
+
+    Parameters:
+        voxel_points (np.ndarray): Nx3 array of voxelized points (x, y, z).
+        density_threshold (int): Minimum density of points to consider a region as significant.
+        eps (float): Maximum distance between two points for them to be considered in the same cluster (DBSCAN).
+        min_samples (int): Minimum number of points to form a cluster (DBSCAN).
+
+    Returns:
+        list[dict]: List of objects with their center, radius, and orientation.
+    """
+    # Step 1: Project voxel points onto the XY plane
+    x, y = voxel_points[:, 0], voxel_points[:, 1]
+
+    # Step 2: Create a density map
+    density_map = defaultdict(int)
+    for xi, yi in zip(x, y):
+        density_map[(xi, yi)] += 1
+
+    # Filter points based on density threshold
+    dense_points = np.array([(xi, yi) for (xi, yi), count in density_map.items() if count >= density_threshold])
+
+    if len(dense_points) == 0:
+        return []  # No objects found
+
+    # Step 3: Apply DBSCAN clustering
+    clustering = DBSCAN(eps=eps, min_samples=min_samples).fit(dense_points)
+    labels = clustering.labels_
+
+    # Step 4: Extract object properties
+    objects = []
+    for label in set(labels):
+        if label == -1:
+            continue  # Skip noise points
+
+        cluster_points = dense_points[labels == label]
+        center = cluster_points.mean(axis=0)
+        radius = np.max(np.linalg.norm(cluster_points - center, axis=1))
+
+        # Calculate orientation using PCA
+        cov_matrix = np.cov(cluster_points, rowvar=False)
+        eigenvalues, eigenvectors = np.linalg.eig(cov_matrix)
+        orientation = np.degrees(np.arctan2(eigenvectors[0, 1], eigenvectors[0, 0]))
+
+        objects.append({
+            "center": tuple(center),
+            "radius": radius,
+            "orientation": orientation
+        })
+
+    return objects
+
+
+def extract_largest_objects_from_voxels_km(voxel_points, n_clusters=25):
+    """
+    Identifies the largest objects in the voxelized point cloud using k-means clustering.
+
+    Parameters:
+        voxel_points (np.ndarray): Nx3 array of voxelized points (x, y, z).
+        n_clusters (int): Number of clusters to form (k-means).
+
+    Returns:
+        list[dict]: List of objects with their center, radius, and orientation.
+    """
+    # Step 1: Project voxel points onto the XY plane
+    x, y = voxel_points[:, 0], voxel_points[:, 1]
+    points_2D = np.column_stack((x, y))
+
+    # Step 2: Apply k-means clustering
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+    labels = kmeans.fit_predict(points_2D)
+
+    # Step 3: Extract object properties
+    objects = []
+    for cluster_label in range(n_clusters):
+        cluster_points = points_2D[labels == cluster_label]
+        if len(cluster_points) == 0:
+            continue  # Skip empty clusters
+
+        # Calculate center
+        center = cluster_points.mean(axis=0)
+
+        # Calculate radius (max distance from center)
+        radius = np.max(np.linalg.norm(cluster_points - center, axis=1))
+
+        # Calculate orientation using PCA
+        cov_matrix = np.cov(cluster_points, rowvar=False)
+        eigenvalues, eigenvectors = np.linalg.eig(cov_matrix)
+        orientation = np.degrees(np.arctan2(eigenvectors[0, 1], eigenvectors[0, 0]))
+
+        objects.append({
+            "center": tuple(center),
+            "radius": radius,
+            "orientation": orientation
+        })
+
+    return objects
+
+
+def plot_objects_on_grid(grid_2D, objects):
+    """
+    Plots the 2D grid (reconstruction in black and white) and overlays the identified objects.
+
+    Parameters:
+        grid_2D (np.ndarray): 2D array representing the reconstruction (black and white).
+        objects (list[dict]): List of objects with their center, radius, and orientation.
+    """
+    # Step 1: Display the 2D grid
+    plt.figure(figsize=(10, 10))
+    plt.imshow(grid_2D, cmap='gray', origin='lower', extent=[0, grid_2D.shape[1], 0, grid_2D.shape[0]])
+    plt.title("Objects on 2D Grid")
+    plt.xlabel("X")
+    plt.ylabel("Y")
+
+    # Step 2: Overlay the identified objects
+    for obj in objects:
+        center = obj["center"]
+        radius = obj["radius"]
+        orientation = obj["orientation"]
+
+        # Plot the circle representing the object
+        circle = plt.Circle(center, radius, color='blue', fill=False, linewidth=2, label='Object Boundary')
+        plt.gca().add_artist(circle)
+
+        # Plot the orientation line
+        orientation_rad = np.radians(orientation)
+        line_x = [center[0], center[0] + radius * np.cos(orientation_rad)]
+        line_y = [center[1], center[1] + radius * np.sin(orientation_rad)]
+        plt.plot(line_x, line_y, color='red', linewidth=2, label='Orientation')
+
+        # Annotate the center
+        plt.scatter(*center, color='green', s=50, label='Object Center')
+
+    # Step 3: Finalize the plot
+    plt.legend(loc='upper right')
+    plt.axis("equal")
+    plt.grid(True)
+    plt.show()

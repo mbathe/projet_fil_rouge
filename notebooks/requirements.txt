@@ -5,3 +5,4 @@ scikit-learn
 alphashape
 shapely
 scipy==1.14.1
+tqdm
