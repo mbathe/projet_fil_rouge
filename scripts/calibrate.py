@@ -30,8 +30,8 @@ def save_calibration_yaml(output_name, output_path, camera_matrix, dist_coeffs, 
         local_transform = np.eye(3, 4, dtype=np.float32)
 
     fs.write("camera_name", output_name)
-    fs.write("image_width", image_size[1])
-    fs.write("image_height", image_size[0])
+    fs.write("image_width", image_size[0])
+    fs.write("image_height", image_size[1])
     fs.write("camera_matrix", camera_matrix)
     fs.write("distortion_coefficients", dist_coeffs)
     fs.write("local_transform", local_transform.astype(np.float32))    
@@ -68,6 +68,8 @@ def calibrate(images_path, square_size, nb_cols, nb_rows, output_name, output_pa
     if not verify_extention(images):
         exit(1)
 
+    undetected_count = 0
+
     for fname in tqdm(images, desc="Lecture des images"):
         img = cv2.imread(os.path.join(images_path, fname))
 
@@ -88,6 +90,7 @@ def calibrate(images_path, square_size, nb_cols, nb_rows, output_name, output_pa
         else:
             print("==============================")
             print(f"Damier non détecté : {fname}")
+            undetected_count +=1
             continue
 
     # Calibration
@@ -98,6 +101,7 @@ def calibrate(images_path, square_size, nb_cols, nb_rows, output_name, output_pa
     print("==============================")
     print("Matrice de la caméra :\n", camera_matrix)
     print("Coefficients de distorsion :\n", dist_coeffs)
+    print(f"Nombre de damier non detecté : {undetected_count}/{len(images)}")
 
     print("==============================")
     print("Saving ...")
@@ -120,7 +124,7 @@ if __name__ == "__main__":
         )
 
     parser.add_argument("--images",type=str,required=True,help="Chemin vers les images d'entrée (.jpg ou .png).")
-    parser.add_argument("--sqr_size", type=int, required=True, help="Taille des carrés du pattern imprimé en mm.")
+    parser.add_argument("--square_size", type=int, required=True, help="Taille des carrés du pattern imprimé en mm.")
 
     parser.add_argument("--cols",type=int,default=9,help="Nombre de colonnes de coins intérieurs.")
     parser.add_argument("--rows",type=int,default=6,help="Nombre de lignes de coins intérieurs (exclut les bords).")
@@ -130,7 +134,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    calibrate(args.images, args.sqr_size, args.cols, args.rows, args.output_name, args.output_path)
+    calibrate(args.images, args.square_size, args.cols, args.rows, args.output_name, args.output_path)
 
 
     
