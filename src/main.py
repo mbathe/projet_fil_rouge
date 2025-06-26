@@ -545,7 +545,7 @@ class RTAB3DMapper:
             # Écriture de la configuration
             ConfigurationManager.write_config(self.config)
 
-            if OS!="Ubuntu":
+            if RUN_TO_DOCKER:
                 command = self.docker_builder.build_command()
                 self._execute_docker_command(command)
             else:
