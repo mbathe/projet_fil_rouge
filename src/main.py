@@ -42,8 +42,8 @@ LOG_MAIN_DIR.mkdir(parents=True, exist_ok=True)
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 LOG_FILE = LOG_MAIN_DIR / f"cartographie3d_{timestamp}.log"
 
-OS, OS_VERSION = get_os_version()
-RUN_TO_DOCKER  = OS == "Ubuntu"
+OS = get_os_version()
+RUN_TO_DOCKER = OS in ["Linux", "Ubuntu"]
 
 
 # Configuration du logging

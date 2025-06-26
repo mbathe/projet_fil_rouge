@@ -35,36 +35,34 @@ DEFAULT_FPS = 20.0
 DEFAULT_START_TIME = 1400000000.0
 
 
-
-
-
-
-
-
 def get_os_version():
-    """Retourne le système d'exploitation et sa version"""
+    """Retourne le système d'exploitation et sa version sous forme de tuple"""
     os_name = platform.system()
-    
+
     if os_name == "Linux":
-        # Vérifier si c'est Ubuntu
+        # Vérifier si c'est Ubuntu ou autre distribution
         if os.path.exists("/etc/os-release"):
+            distro = "Linux"  # Valeur par défaut
+            version = "Version non connue"  # Valeur par défaut
+
             with open("/etc/os-release", "r") as f:
                 for line in f:
                     if line.startswith("NAME="):
                         distro = line.split("=")[1].strip().strip('"')
                     elif line.startswith("VERSION_ID="):
                         version = line.split("=")[1].strip().strip('"')
-                        return f"{distro}", f"{version}"
-        return "Linux", f"(version inconnue)"
-    
+
+            return distro
+        return "Linux"
+
     elif os_name == "Windows":
-        return "Windows", f"{platform.release()}"
-    
+        return "Windows"
+
     elif os_name == "Darwin":
-        return "macOS", f"{platform.mac_ver()[0]}"
-    
+        return "macOS"
+
     else:
-        return "{os_name}", f"(version inconnue)"
+        return os_name
 
 
 
