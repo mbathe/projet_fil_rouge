@@ -23,7 +23,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 from datetime import datetime
-from utils import MultiPlatformPathManager
+from utils import MultiPlatformPathManager, get_os_version
+from rtabmap.script.rtabmap import main as rtabmap_main
 
 # Configuration des constantes
 SCRIPT_DIR = Path(__file__).parent.absolute()
@@ -40,6 +41,9 @@ OUTPUT_RTABMAP = PROJECT_ROOT / "output" / "rtabmap"
 LOG_MAIN_DIR.mkdir(parents=True, exist_ok=True)
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 LOG_FILE = LOG_MAIN_DIR / f"cartographie3d_{timestamp}.log"
+
+OS, OS_VERSION = get_os_version()
+RUN_TO_DOCKER  = not OS != "Ubuntu"
 
 
 # Configuration du logging
@@ -87,9 +91,7 @@ class CartographyPaths:
     image_folder: Path
     depth_folder: Path
     calibration_file: Path
-    rgb_timestamps: Path
     output_folder: Path
-    depth_timestamps: Path
     video_file: Path
 
     def __post_init__(self) -> None:
@@ -156,9 +158,7 @@ class PathValidator:
         logger.info(
             f"Validation réussie: {len(image_files)} images trouvées dans {paths.image_folder}")
 
-        if not paths.rgb_timestamps.exists():
-            logger.warning(
-                f"Fichier de timestamps RGB manquant: {paths.rgb_timestamps}")
+        
 
     @staticmethod
     def _validate_image_with_depth_source(paths: CartographyPaths) -> None:
@@ -195,14 +195,7 @@ class PathValidator:
         logger.info(
             f"Validation réussie: {len(rgb_files)} images RGB et {len(depth_files)} images de profondeur trouvées")
 
-        # Validation des fichiers de timestamps
-        if not paths.rgb_timestamps.exists():
-            logger.warning(
-                f"Fichier de timestamps RGB manquant: {paths.rgb_timestamps}")
-
-        if not paths.depth_timestamps.exists():
-            logger.warning(
-                f"Fichier de timestamps de profondeur manquant: {paths.depth_timestamps}")
+        
 
     @staticmethod
     def _validate_video_source(paths: CartographyPaths) -> None:
@@ -280,8 +273,6 @@ class DockerCommandBuilder:
         volume_mappings = {
             self.paths.image_folder: "/rtabmap_ws/rgb_sync_docker",
             self.paths.depth_folder: "/rtabmap_ws/depth_sync_docker",
-            self.paths.rgb_timestamps: "/rtabmap_ws/img_timestamps.csv",
-            self.paths.depth_timestamps: "/rtabmap_ws/depth_timestamps.csv",
             self.paths.output_folder: "/rtabmap_ws/output/rtabmap",
             self.paths.calibration_file: "/rtabmap_ws/rtabmap_calib.yaml",
             RTABMAP_CONFIG_FILE: "/rtabmap_ws/config.json",
@@ -472,8 +463,6 @@ class RTAB3DMapper:
                 image_folder=args.image_folder,
                 depth_folder=args.depth_folder,
                 calibration_file=args.calibration_file,
-                rgb_timestamps=args.rgb_timestamps,
-                depth_timestamps=args.depth_timestamps,
                 output_folder=OUTPUT_RTABMAP,
                 video_file=args.video_file
             )
@@ -482,20 +471,21 @@ class RTAB3DMapper:
                 "image_folder": args.image_folder,
                 "depth_folder": args.depth_folder,
                 "calibration_file": args.calibration_file,
-                "rgb_timestamps": args.rgb_timestamps,
-                "depth_timestamps": args.depth_timestamps,
                 "output_folder": OUTPUT_RTABMAP,
-                "video_file": args.video_file
+                "video_file": args.video_file,
+                "config_file": PROJECT_ROOT /"src"/"rtabmap_config.json",
+                "db_params": PROJECT_ROOT / "src"/"rtabmap"/"params"/"db_params.json",
+                "export_params": PROJECT_ROOT/"src"/"rtabmap"/"params"/"export_params.json",
+                "reprocess_params": PROJECT_ROOT / "src"/"rtabmap"/"params"/"reprocess_params.json"
             }
 
-            path_manager = MultiPlatformPathManager(
+            
+            self.path_manager = MultiPlatformPathManager(
                 host_source_path=path_hote)
 
-            # Configuration de l'environnement
-            path_manager.setup_local_environment()
-            # path_manager.print_configuration()
-            paths = path_manager.get_paths()
-          
+            
+            self.path_manager.setup_local_environment()
+           
 
             self.config = RTABMapConfig(
                 reprocess=args.reprocess,
@@ -534,6 +524,7 @@ class RTAB3DMapper:
 
             # Génération de la cartographie 3D
             self._build_3d_map()
+            self.path_manager.delete_base_dir()
 
         except Exception as e:
             logger.error(
@@ -554,8 +545,11 @@ class RTAB3DMapper:
             # Écriture de la configuration
             ConfigurationManager.write_config(self.config)
 
-            command = self.docker_builder.build_command()
-            self._execute_docker_command(command)
+            if OS!="Ubuntu":
+                command = self.docker_builder.build_command()
+                self._execute_docker_command(command)
+            else:
+                rtabmap_main(OUTPUT_RTABMAP)
 
             verification_results = OutputVerifier.verify_outputs(
                 self.paths.output_folder)
@@ -651,18 +645,7 @@ class CommandLineParser:
             help="Chemin vers le fichier de calibration"
         )
 
-        input_group.add_argument(
-            "--rgb_timestamps", type=str,
-            default=str(PROJECT_ROOT /
-                        "data/datasets/deer_walk/cam0/data.csv"),
-            help="Chemin vers le fichier de timestamps RGB"
-        )
-        input_group.add_argument(
-            "--depth_timestamps", type=str,
-            default=str(PROJECT_ROOT /
-                        "data/datasets/deer_walk/depth0/data.csv"),
-            help="Chemin vers le fichier de timestamps profondeur"
-        )
+        
 
         # Groupe des paramètres de traitement
         processing_group = parser.add_argument_group(

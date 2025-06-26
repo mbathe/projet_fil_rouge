@@ -158,9 +158,7 @@ In the examples below, replace `<PROJECT_ROOT>` with the absolute path to your p
 python3 <PROJECT_ROOT>/src/main.py \
   --image_folder "<PROJECT_ROOT>/data/images" \
   --depth_folder "<PROJECT_ROOT>/data/depth" \
-  --calibration_file "<PROJECT_ROOT>/data/rtabmap_calib.yaml" \
-  --rgb_timestamps "<PROJECT_ROOT>/data/img_timestamps.csv" \
-  --depth_timestamps "<PROJECT_ROOT>/data/depth_timestamps.csv"
+  --calibration_file "<PROJECT_ROOT>/data/rtabmap_calib.yaml"
 ```
 
 For example, if your project is located at `/home/user/cartographie3d`, all paths should start with that root.
@@ -199,8 +197,6 @@ Here is the full list of arguments accepted by the script:
 --image_folder        Folder containing RGB images or path to the video file (default: "./image_folder")
 --depth_folder         Folder containing depth images (default: "./depth_folder")
 --calibration_file     Path to the camera calibration file (default: "./rtabmap_calib.yaml")
---rgb_timestamps       Path to the RGB timestamps CSV file (default: "./img_timestamps.csv")
---depth_timestamps     Path to the depth timestamps CSV file (default: "./depth_timestamps.csv")
 --source               Source to use: "image" (RGB without depth), "image_with_depth" (RGB-D), "video" (video)
                        (default: "image_with_depth")
 --frequence            Frame extraction frequency from video in Hz (default: 20)
@@ -220,7 +216,7 @@ python src/main.py --source image --image_folder ./data/rgb_images
 
 #### Existing RGB-D image processing with timestamp files
 ```bash
-python src/main.py --source image_with_depth --image_folder ./data/rgb --depth_folder ./data/depth --rgb_timestamps ./data/rgb_timestamps.csv --depth_timestamps ./data/depth_timestamps.csv
+python src/main.py --source image_with_depth --image_folder ./data/rgb --depth_folder ./data/depth
 ```
 
 ## Data Format

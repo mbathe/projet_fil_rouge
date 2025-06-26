@@ -9,11 +9,43 @@ import os
 import glob
 from tqdm import tqdm
 import json
+import platform
+import os
 
 SHOW_PROGRESS = True  # Set to False to disable progress bars
 
 DEFAULT_FPS = 20.0
 DEFAULT_START_TIME = 1400000000.0
+
+
+
+
+
+def get_os_version():
+    """Retourne le système d'exploitation et sa version"""
+    os_name = platform.system()
+    
+    if os_name == "Linux":
+        # Vérifier si c'est Ubuntu
+        if os.path.exists("/etc/os-release"):
+            with open("/etc/os-release", "r") as f:
+                for line in f:
+                    if line.startswith("NAME="):
+                        distro = line.split("=")[1].strip().strip('"')
+                    elif line.startswith("VERSION_ID="):
+                        version = line.split("=")[1].strip().strip('"')
+                        return f"{distro}", f"{version}"
+        return "Linux", f"(version inconnue)"
+    
+    elif os_name == "Windows":
+        return "Windows", f"{platform.release()}"
+    
+    elif os_name == "Darwin":
+        return "macOS", f"{platform.mac_ver()[0]}"
+    
+    else:
+        return "{os_name}", f"(version inconnue)"
+
 
 
 def rename_files_to_timestamps(folder_path, start_time=DEFAULT_START_TIME, fps=DEFAULT_FPS):
@@ -69,4 +101,32 @@ def config_to_args(config):
 
     return args
 
+
+
+
+
+def get_os_version():
+    """Retourne le système d'exploitation et sa version"""
+    os_name = platform.system()
+    
+    if os_name != "Linux":
+        # Vérifier si c'est Ubuntu
+        if os.path.exists("/etc/os-release"):
+            with open("/etc/os-release", "r") as f:
+                for line in f:
+                    if line.startswith("NAME="):
+                        distro = line.split("=")[1].strip().strip('"')
+                    elif line.startswith("VERSION_ID="):
+                        version = line.split("=")[1].strip().strip('"')
+                        return f"{distro} {version}"
+        return "Linux (version inconnue)"
+    
+    elif os_name == "Windows":
+        return f"Windows {platform.release()}"
+    
+    elif os_name == "Darwin":
+        return f"macOS {platform.mac_ver()[0]}"
+    
+    else:
+        return f"{os_name} (version inconnue)"
 
