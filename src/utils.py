@@ -93,8 +93,6 @@ class MultiPlatformPathManager:
         self.docker_paths = {
             "image_folder": "/rtabmap_ws/rgb_sync_docker",
             "depth_folder": "/rtabmap_ws/depth_sync_docker",
-            "rgb_timestamps": "/rtabmap_ws/img_timestamps.csv",
-            "depth_timestamps": "/rtabmap_ws/depth_timestamps.csv",
             "output_folder": "/rtabmap_ws/output/rtabmap",
             "calibration_file": "/rtabmap_ws/rtabmap_calib.yaml",
             "config_file": "/rtabmap_ws/config.json",
@@ -105,8 +103,6 @@ class MultiPlatformPathManager:
         self.local_paths = {
             "image_folder": self.base_local_dir / "rgb_sync_docker",
             "depth_folder": self.base_local_dir / "depth_sync_docker",
-            "rgb_timestamps": self.base_local_dir / "img_timestamps.csv",
-            "depth_timestamps": self.base_local_dir / "depth_timestamps.csv",
             "output_folder": self.base_local_dir / "output" / "rtabmap",
             "calibration_file": self.base_local_dir / "rtabmap_calib.yaml",
             "config_file": self.base_local_dir / "config.json",
@@ -143,7 +139,7 @@ class MultiPlatformPathManager:
         print(f"Environnement local configuré dans : {self.base_local_dir}")
 
     def create_local_directories(self):
-        """Crée tous les dossiers nécessaires en local"""
+        """Crée tous les dossiers nécessaires en local après suppression des existants"""
         directories_to_create = [
             self.local_paths["image_folder"],
             self.local_paths["depth_folder"],
@@ -152,14 +148,15 @@ class MultiPlatformPathManager:
         ]
 
         for directory in directories_to_create:
+            if directory.exists():
+                shutil.rmtree(directory)  # Supprime le dossier existant
+                print(f"Dossier supprimé : {directory}")
             directory.mkdir(parents=True, exist_ok=True)
             print(f"Dossier créé : {directory}")
 
     def copy_files_to_local(self):
-        """Copie les fichiers depuis les sources vers l'environnement local"""
+        """Copie les fichiers depuis les sources vers l'environnement local après suppression des existants"""
         files_to_copy = [
-            ("rgb_timestamps", "file"),
-            ("depth_timestamps", "file"),
             ("calibration_file", "file"),
             ("config_file", "file"),
             ("db_params", "file"),
@@ -173,8 +170,16 @@ class MultiPlatformPathManager:
             source = Path(self.host_source_paths.get(key, ""))
             destination = self.local_paths[key]
 
+            if destination.exists():
+                if file_type == "file":
+                    destination.unlink()  # Supprime le fichier existant
+                    print(f"Fichier supprimé : {destination}")
+                elif file_type == "directory":
+                    shutil.rmtree(destination)  # Supprime le dossier existant
+                    print(f"Dossier supprimé : {destination}")
+
             if not source.exists():
-                print(f"⚠️  Source non trouvée : {source}")
+                print(f" Source non trouvée : {source}")
                 continue
 
             try:
@@ -182,13 +187,10 @@ class MultiPlatformPathManager:
                     shutil.copy2(source, destination)
                     print(f"Fichier copié : {source} -> {destination}")
                 elif file_type == "directory":
-                    if destination.exists():
-                        shutil.rmtree(destination)
                     shutil.copytree(source, destination)
                     print(f"Dossier copié : {source} -> {destination}")
             except Exception as e:
-                print(
-                    f"Erreur lors de la copie {source} -> {destination}: {e}")
+                print(f"Erreur lors de la copie {source} -> {destination}: {e}")
 
     def get_docker_volume_mounts(self) -> list:
         """Génère les arguments de montage de volumes pour Docker"""
@@ -205,6 +207,13 @@ class MultiPlatformPathManager:
                 mounts.append(f"-v {os.path.abspath(host_path)}:{docker_path}")
 
         return mounts
+    
+    def delete_base_dir(self):
+        """Supprime le répertoire de base local"""
+        if self.base_local_dir.exists():
+            shutil.rmtree(self.base_local_dir)
+        else:
+            print(f"Aucun répertoire à supprimer : {self.base_local_dir}")
 
 
 def create_or_clean_dir(path):
@@ -255,8 +264,6 @@ class RTABMAPPaths:
             # Linux - chemins absolus originaux
             self.image_folder = "/rtabmap_ws/rgb_sync_docker"
             self.depth_folder = "/rtabmap_ws/depth_sync_docker"
-            self.rgb_timestamps = "/rtabmap_ws/img_timestamps.csv"
-            self.depth_timestamps = "/rtabmap_ws/depth_timestamps.csv"
             self.output_folder = "/rtabmap_ws/output/rtabmap"
             self.calibration_file = "/rtabmap_ws/rtabmap_calib.yaml"
             self.config_file = "/rtabmap_ws/config.json"
@@ -265,10 +272,6 @@ class RTABMAPPaths:
             self.image_folder = os.path.join(self.base_path, "rgb_sync_docker")
             self.depth_folder = os.path.join(
                 self.base_path, "depth_sync_docker")
-            self.rgb_timestamps = os.path.join(
-                self.base_path, "img_timestamps.csv")
-            self.depth_timestamps = os.path.join(
-                self.base_path, "depth_timestamps.csv")
             self.output_folder = os.path.join(
                 self.base_path, "output", "rtabmap")
             self.calibration_file = os.path.join(
@@ -283,8 +286,6 @@ class RTABMAPPaths:
             self.depth_folder,
             self.output_folder,
             self.log_dir,
-            os.path.dirname(self.rgb_timestamps),
-            os.path.dirname(self.depth_timestamps),
             os.path.dirname(self.calibration_file),
             os.path.dirname(self.config_file)
         ]
@@ -308,8 +309,6 @@ class RTABMAPPaths:
             "depth_folder": self.depth_folder,
             "output_folder": self.output_folder,
             "log_dir": self.log_dir,
-            "rgb_timestamps": self.rgb_timestamps,
-            "depth_timestamps": self.depth_timestamps,
             "calibration_file": self.calibration_file,
             "config_file": self.config_file
         }
@@ -330,8 +329,6 @@ class RTABMAPPaths:
             "base_path": self.base_path,
             "image_folder": self.image_folder,
             "depth_folder": self.depth_folder,
-            "rgb_timestamps": self.rgb_timestamps,
-            "depth_timestamps": self.depth_timestamps,
             "output_folder": self.output_folder,
             "calibration_file": self.calibration_file,
             "config_file": self.config_file,
@@ -495,8 +492,6 @@ class RTABMAPManager:
             - Logs: {paths['log_dir']}
 
             Fichiers:
-            - Timestamps RGB: {paths['rgb_timestamps']}
-            - Timestamps Depth: {paths['depth_timestamps']}
             - Calibration: {paths['calibration_file']}
             - Configuration: {paths['config_file']}
         """
