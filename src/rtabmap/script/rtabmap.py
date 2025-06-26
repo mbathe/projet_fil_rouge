@@ -1,5 +1,4 @@
-sys.path.append(os.path.abspath(os.path.join(
-    os.path.dirname(_file_))))
+
 import os
 
 
