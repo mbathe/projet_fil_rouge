@@ -1,11 +1,18 @@
+sys.path.append(os.path.abspath(os.path.join(
+    os.path.dirname(_file_))))
 import os
+
+sys.path.append(os.path.abspath(os.path.join(
+    os.path.dirname(_file_))))
+import os
+
 import glob
 import pandas as pd
 import numpy as np
 import subprocess
 import shutil
 import sys
-from .tols import load_config, config_to_args, get_os_version
+from tols import load_config, config_to_args, get_os_version
 from dotenv import load_dotenv
 import os
 import re
