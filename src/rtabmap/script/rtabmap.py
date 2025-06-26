@@ -1,3 +1,9 @@
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(
+    os.path.dirname(__file__))))
+
 import os
 import glob
 import pandas as pd
@@ -5,7 +11,7 @@ import numpy as np
 import subprocess
 import shutil
 import sys
-from .tols import load_config, config_to_args, get_os_version
+from tols import load_config, config_to_args
 from dotenv import load_dotenv
 import os
 import re
@@ -16,36 +22,18 @@ from pathlib import Path
 load_dotenv()
 
 # Default paths - configurable via parameters
-script_dir = os.path.dirname(os.path.abspath(__file__))
-RTABMAB_DOCKER_ROOT = Path(script_dir)/"rtabmap_ws"
+RTABMAB_DOCKER_ROOT = "/rtabmap_ws"
 SHOW_PROGRESS = False
 RGB_PATH = f"{RTABMAB_DOCKER_ROOT}/rgb_sync"
 DEPTH_PATH = f"{RTABMAB_DOCKER_ROOT}/depth_sync"
-
-RGB_PATH_FROM = f"{RTABMAB_DOCKER_ROOT}/rgb_sync_docker"
-DEPTH_PATH_FROM = f"{RTABMAB_DOCKER_ROOT}/depth_sync_docker"
-
-
 LOG_DIR = Path(RTABMAB_DOCKER_ROOT)/"logs"
+IMG_TIMESTAMPS = "img_timestamps.csv"
+DEPTH_TIMESTAMPS = "depth_timestamps.csv"
 EXPORT_PARAMS_FILES = f"{RTABMAB_DOCKER_ROOT}/export_params.json"
 GENERATE_DB_PARAMS_FILES = f"{RTABMAB_DOCKER_ROOT}/db_params.json"
 REPROCESS_PARAMS_FILES = f"{RTABMAB_DOCKER_ROOT}/reprocess_params.json"
 
 
-calib_path = RTABMAB_DOCKER_ROOT/"rtabmap_calib.yaml"
-
-OS= get_os_version()[0]
-
-RUN_TO_DOCKER  =  OS == "Ubuntu"
-if  not RUN_TO_DOCKER:
-    LOG_DIR = Path(__file__).resolve().parent.parent.parent.parent / "logs"
-    print(LOG_DIR)
-
-
-
-
-
-   
 
 
 def validate_csv_columns(csv_path):
@@ -69,7 +57,7 @@ def validate_csv_columns(csv_path):
         return False
 
 
-def prepare_dataset(rgb_dir, depth_dir, root_dir =RTABMAB_DOCKER_ROOT):
+def prepare_dataset(rgb_dir, depth_dir, calib_file, rgb_timestamps, depth_timestamps):
     """
     Prepare the dataset by copying files to target directories.
     
@@ -77,14 +65,22 @@ def prepare_dataset(rgb_dir, depth_dir, root_dir =RTABMAB_DOCKER_ROOT):
         rgb_dir: Source directory for RGB images
         depth_dir: Source directory for depth images
         calib_file: Calibration file path
-        
+        rgb_timestamps: RGB timestamps CSV file path
+        depth_timestamps: Depth timestamps CSV file path
     """
-    
-    rgb_sync_dir = root_dir /"rgb_sync"
-    depth_sync_dir =root_dir /"depth_sync"
-   
+    root_dir = os.getcwd()
+    rgb_sync_dir = os.path.join(root_dir, "/rtabmap_ws/rgb_sync")
+    depth_sync_dir = os.path.join(root_dir, "/rtabmap_ws/depth_sync")
+    calib_target_path = os.path.join(
+        root_dir, "/rtabmap_ws/rtabmap_calib.yaml")
+    rgb_timestamps_target_path = os.path.join(
+        root_dir, "/rtabmap_ws/img_timestamps.csv")
+    depth_timestamps_target_path = os.path.join(
+        root_dir, "/rtabmap_ws/depth_timestamps.csv")
 
-    
+    # Verify CSV files
+    if not validate_csv_columns(rgb_timestamps) or not validate_csv_columns(depth_timestamps):
+        return
 
     # Create target directories if they don't exist
     for sync_dir in [rgb_sync_dir, depth_sync_dir]:
@@ -270,8 +266,8 @@ def generate_db():
     print("\n===== Génération de la base de données RTAB-Map =====")
     execute_command(GENERATE_DB_PARAMS_FILES,
                     start_command=["rtabmap-rgbd_dataset",
-                                   "--calib ", f"{RTABMAB_DOCKER_ROOT}/rtabmap_calib.yaml"],
-                    end_command=["--output_path", f"{RTABMAB_DOCKER_ROOT}"],
+                                   "--calib ", "/rtabmap_ws/rtabmap_calib.yaml"],
+                    end_command=["--output_path", "/rtabmap_ws"],
                     show_progress=SHOW_PROGRESS)
     
    
@@ -289,7 +285,7 @@ def reprocess():
     print("\n===== Retraitement de la base de données RTAB-Map =====")
     execute_command(REPROCESS_PARAMS_FILES,
                     start_command=["rtabmap-reprocess"],
-                    end_command=[{RTABMAB_DOCKER_ROOT}/"rtabmap.db",
+                    end_command=["/rtabmap_ws/rtabmap.db",
                                  "output_optimized.db"],
                     show_progress=SHOW_PROGRESS, sud_dir_log="reprocess")
 
@@ -309,20 +305,15 @@ def export_point_cloud(output_type="--cloud"):
     execute_command(EXPORT_PARAMS_FILES,
                     start_command=start_command,
                     end_command=[f"{output_type}",  "--output", "point",
-                                 RTABMAB_DOCKER_ROOT/"rtabmap.db"],
+                                 "/rtabmap_ws/rtabmap.db"],
                     show_progress=SHOW_PROGRESS, sud_dir_log="export")
 
 
-
-
-
-
-def generate_3db_map(config):
+def main(config):
 
    
-
     """Run RTAB-Map processing on the dataset."""
-    
+
     output_type = "--mesh" # Exporter un mesh vous pouvez changer en "--cloud" pour exporter un nuage de points
     generate_db()
     if config.get("reprocess", True):
@@ -331,35 +322,39 @@ def generate_3db_map(config):
     export_point_cloud(output_type=config.get("export_format", output_type))
 
    
+if __name__ == "__main__":
 
+    print(sys.argv)
 
+    config = load_config("/rtabmap_ws/config.json")
+    extension = "cloud" if config.get(
+        "export_format", "--cloud") == "--cloud" else "mesh"
+    rgb_path = "/rtabmap_ws/rgb_sync"
+    depth_path = "/rtabmap_ws/depth_sync"
 
+    rgb_path_from = "/rtabmap_ws/rgb_sync_docker"
+    depth_path_from = "/rtabmap_ws/depth_sync_docker"
 
+    calib_path = "rtabmap_calib.yaml"
+    rgb_timestamps = "img_timestamps.csv"
+    depth_timestamps = "depth_timestamps.csv"
 
-
-def main(output_path=Path("/rtabmap_ws/output/rtabmap")):
-    config = load_config(f"{RTABMAB_DOCKER_ROOT}/config.json")
-    extension = "cloud" if config.get("export_format", "--cloud")=="--cloud" else "mesh"
-
-    prepare_dataset(RGB_PATH_FROM, DEPTH_PATH_FROM)
+    print("===== Preparing Dataset =====")
+    prepare_dataset(rgb_path_from, depth_path_from, calib_path,
+                    rgb_timestamps, depth_timestamps)
 
     
-    generate_3db_map(config)
-    file_name = f"point_{extension}.ply"
+    main(config)
+
     print("\n===== Copying Results =====")
-    os.makedirs(output_path, exist_ok=True)
-    shutil.copy2(RTABMAB_DOCKER_ROOT/"rtabmap.db",output_path/"rtabmap.db")
-    shutil.copy2(RTABMAB_DOCKER_ROOT/file_name,output_path/file_name)
-    print(f"Processing complete! Results saved to {output_path}")
+    os.makedirs("/rtabmap_ws/output/rtabmap", exist_ok=True)
+    # shutil.copy2("/rtabmap_ws/output_optimized.db","/rtabmap_ws/output/rtabmap/rtabmap.db")
+    shutil.copy2("/rtabmap_ws/rtabmap.db",
+                 "/rtabmap_ws/output/rtabmap/rtabmap.db")
+    shutil.copy2(f"/rtabmap_ws/point_{extension}.ply",
+                 f"/rtabmap_ws/output/rtabmap/point_{extension}.ply")
+    print("Processing complete! Results saved to /output/rtabmap/")
 
-
-
-
-
-
-
-if __name__ == "__main__":
-    main()
     
 
 
