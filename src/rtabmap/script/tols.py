@@ -9,6 +9,8 @@ import os
 import glob
 from tqdm import tqdm
 import json
+import platform
+import os
 
 SHOW_PROGRESS = True  # Set to False to disable progress bars
 
@@ -68,4 +70,33 @@ def config_to_args(config):
         args.append(arg)
 
     return args
+
+
+
+
+
+def get_os_version():
+    """Retourne le système d'exploitation et sa version"""
+    os_name = platform.system()
+    
+    if os_name != "Linux":
+        # Vérifier si c'est Ubuntu
+        if os.path.exists("/etc/os-release"):
+            with open("/etc/os-release", "r") as f:
+                for line in f:
+                    if line.startswith("NAME="):
+                        distro = line.split("=")[1].strip().strip('"')
+                    elif line.startswith("VERSION_ID="):
+                        version = line.split("=")[1].strip().strip('"')
+                        return f"{distro} {version}"
+        return "Linux (version inconnue)"
+    
+    elif os_name == "Windows":
+        return f"Windows {platform.release()}"
+    
+    elif os_name == "Darwin":
+        return f"macOS {platform.mac_ver()[0]}"
+    
+    else:
+        return f"{os_name} (version inconnue)"
 

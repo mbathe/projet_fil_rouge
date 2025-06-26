@@ -28,6 +28,12 @@ import shutil
 import json
 import argparse
 
+import os
+
+# Répertoire du script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+
 
 SHOW_PROGRESS = True  # Set to False to disable progress bars
 
@@ -40,8 +46,46 @@ DEFAULT_FPS = 20.0
 DEFAULT_START_TIME = 1400000000.0
 
 
+
+
+
+
+
+
+def get_os_version():
+    """Retourne le système d'exploitation et sa version"""
+    os_name = platform.system()
+    
+    if os_name == "Linux":
+        # Vérifier si c'est Ubuntu
+        if os.path.exists("/etc/os-release"):
+            with open("/etc/os-release", "r") as f:
+                for line in f:
+                    if line.startswith("NAME="):
+                        distro = line.split("=")[1].strip().strip('"')
+                    elif line.startswith("VERSION_ID="):
+                        version = line.split("=")[1].strip().strip('"')
+                        return f"{distro}", f"{version}"
+        return "Linux", f"(version inconnue)"
+    
+    elif os_name == "Windows":
+        return "Windows", f"{platform.release()}"
+    
+    elif os_name == "Darwin":
+        return "macOS", f"{platform.mac_ver()[0]}"
+    
+    else:
+        return "{os_name}", f"(version inconnue)"
+
+
+
+
+
+
+
+
 class MultiPlatformPathManager:
-    def __init__(self, host_source_path, base_local_dir: str = "./rtabmap_ws"):
+    def __init__(self, host_source_path, base_local_dir: str =Path(script_dir)/"rtabmap"/"script/rtabmap_ws"):
         self.is_linux = platform.system() != "Linux"
         self.base_local_dir = Path(base_local_dir)
 
@@ -66,7 +110,10 @@ class MultiPlatformPathManager:
             "output_folder": self.base_local_dir / "output" / "rtabmap",
             "calibration_file": self.base_local_dir / "rtabmap_calib.yaml",
             "config_file": self.base_local_dir / "config.json",
-            "log_dir": self.base_local_dir / "logs"
+            "log_dir": self.base_local_dir / "logs",
+            "db_params": self.base_local_dir / "db_params.json",
+            "export_params": self.base_local_dir / "export_params.json",
+            "reprocess_params": self.base_local_dir / "reprocess_params.json"
         }
 
         # Chemins sources sur la machine hôte (à adapter selon votre structure)
@@ -115,6 +162,9 @@ class MultiPlatformPathManager:
             ("depth_timestamps", "file"),
             ("calibration_file", "file"),
             ("config_file", "file"),
+            ("db_params", "file"),
+            ("export_params", "file"),
+            ("reprocess_params", "file"),
             ("image_folder", "directory"),
             ("depth_folder", "directory")
         ]

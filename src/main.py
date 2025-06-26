@@ -23,7 +23,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 from datetime import datetime
-from utils import MultiPlatformPathManager
+from utils import MultiPlatformPathManager, get_os_version
+from rtabmap.script.rtabmap import main as rtabmap_main
 
 # Configuration des constantes
 SCRIPT_DIR = Path(__file__).parent.absolute()
@@ -40,6 +41,8 @@ OUTPUT_RTABMAP = PROJECT_ROOT / "output" / "rtabmap"
 LOG_MAIN_DIR.mkdir(parents=True, exist_ok=True)
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 LOG_FILE = LOG_MAIN_DIR / f"cartographie3d_{timestamp}.log"
+
+OS, OS_VERSION = get_os_version()
 
 
 # Configuration du logging
@@ -485,17 +488,22 @@ class RTAB3DMapper:
                 "rgb_timestamps": args.rgb_timestamps,
                 "depth_timestamps": args.depth_timestamps,
                 "output_folder": OUTPUT_RTABMAP,
-                "video_file": args.video_file
+                "video_file": args.video_file,
+                "config_file": PROJECT_ROOT /"src"/"rtabmap_config.json",
+                "db_params": PROJECT_ROOT / "src"/"rtabmap"/"params"/"db_params.json",
+                "export_params": PROJECT_ROOT/"src"/"rtabmap"/"params"/"export_params.json",
+                "reprocess_params": PROJECT_ROOT / "src"/"rtabmap"/"params"/"reprocess_params.json"
             }
 
-            path_manager = MultiPlatformPathManager(
-                host_source_path=path_hote)
+            if OS == "Ubuntu":
+                path_manager = MultiPlatformPathManager(
+                    host_source_path=path_hote)
 
-            # Configuration de l'environnement
-            path_manager.setup_local_environment()
-            # path_manager.print_configuration()
-            paths = path_manager.get_paths()
-            print(paths)
+                # Configuration de l'environnement
+                path_manager.setup_local_environment()
+                # path_manager.print_configuration()
+                paths = path_manager.get_paths()
+            #print(paths)
 
             self.config = RTABMapConfig(
                 reprocess=args.reprocess,
@@ -554,8 +562,11 @@ class RTAB3DMapper:
             # Écriture de la configuration
             ConfigurationManager.write_config(self.config)
 
-            command = self.docker_builder.build_command()
-            self._execute_docker_command(command)
+            if OS!="Ubuntu":
+                command = self.docker_builder.build_command()
+                self._execute_docker_command(command)
+            else:
+                rtabmap_main()
 
             verification_results = OutputVerifier.verify_outputs(
                 self.paths.output_folder)
