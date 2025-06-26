@@ -36,8 +36,8 @@ calib_path = RTABMAB_DOCKER_ROOT/"rtabmap_calib.yaml"
 
 OS= get_os_version()[0]
 
-RUN_TO_DOCKER  = not OS != "Ubuntu"
-if  RUN_TO_DOCKER:
+RUN_TO_DOCKER  =  OS == "Ubuntu"
+if  not RUN_TO_DOCKER:
     LOG_DIR = Path(__file__).resolve().parent.parent.parent.parent / "logs"
     print(LOG_DIR)
 

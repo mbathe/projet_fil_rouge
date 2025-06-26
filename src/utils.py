@@ -86,7 +86,7 @@ def get_os_version():
 
 class MultiPlatformPathManager:
     def __init__(self, host_source_path, base_local_dir: str =Path(script_dir)/"rtabmap"/"script/rtabmap_ws"):
-        self.is_linux = platform.system() != "Linux"
+        self.is_linux = platform.system() == "Linux"
         self.base_local_dir = Path(base_local_dir)
 
         # Configuration des chemins Docker (pour Linux)
