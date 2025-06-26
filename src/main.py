@@ -43,7 +43,7 @@ timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 LOG_FILE = LOG_MAIN_DIR / f"cartographie3d_{timestamp}.log"
 
 OS, OS_VERSION = get_os_version()
-RUN_TO_DOCKER  = not OS != "Ubuntu"
+RUN_TO_DOCKER  = OS == "Ubuntu"
 
 
 # Configuration du logging
@@ -743,7 +743,7 @@ def main() -> int:
 
         # Affichage des paramètres principaux
         logger.info(f"Source: {args.source}")
-        logger.info(f"Dossier d'images: {OUTPUT_RTABMAP}")
+        logger.info(f"Dossier d'images: {OUTPUT_IMAGES}")
         logger.info(f"Dossier de sortie: {OUTPUT_RTABMAP}")
 
         # Initialisation et exécution du processus de cartographie
