@@ -4,6 +4,11 @@ Script pour extraire des images d'une vidéo à une fréquence donnée
 Compatible avec RTAB-Map - les images sont nommées avec timestamp
 """
 
+import logging
+import json
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass
+import platform
 import numpy as np
 import cv2
 import os
@@ -15,8 +20,145 @@ import os
 import shutil
 
 
+import os
+import sys
+import glob
+from tqdm import tqdm
+import shutil
+import json
+import argparse
+
+
+SHOW_PROGRESS = True  # Set to False to disable progress bars
+
+WORKSPACE_ROOT = os.getcwd()
+DEFAULT_DIR_RTABMAP = "rtabmap_ws"
+DEFAULT_DIR_IMAGE = "rgb_sync"
+DEFAULT_DIR_DEPTH = "depth_sync"
+DEFAULT_FILE_CALIB = "rtabmap_calib.yaml"
+DEFAULT_FPS = 20.0
+DEFAULT_START_TIME = 1400000000.0
+
+
+class MultiPlatformPathManager:
+    def __init__(self, host_source_path, base_local_dir: str = "./rtabmap_ws"):
+        self.is_linux = platform.system() != "Linux"
+        self.base_local_dir = Path(base_local_dir)
+
+        # Configuration des chemins Docker (pour Linux)
+        self.docker_paths = {
+            "image_folder": "/rtabmap_ws/rgb_sync_docker",
+            "depth_folder": "/rtabmap_ws/depth_sync_docker",
+            "rgb_timestamps": "/rtabmap_ws/img_timestamps.csv",
+            "depth_timestamps": "/rtabmap_ws/depth_timestamps.csv",
+            "output_folder": "/rtabmap_ws/output/rtabmap",
+            "calibration_file": "/rtabmap_ws/rtabmap_calib.yaml",
+            "config_file": "/rtabmap_ws/config.json",
+            "log_dir": "/rtabmap_ws/logs"
+        }
+
+        # Configuration des chemins locaux (pour Windows/macOS)
+        self.local_paths = {
+            "image_folder": self.base_local_dir / "rgb_sync_docker",
+            "depth_folder": self.base_local_dir / "depth_sync_docker",
+            "rgb_timestamps": self.base_local_dir / "img_timestamps.csv",
+            "depth_timestamps": self.base_local_dir / "depth_timestamps.csv",
+            "output_folder": self.base_local_dir / "output" / "rtabmap",
+            "calibration_file": self.base_local_dir / "rtabmap_calib.yaml",
+            "config_file": self.base_local_dir / "config.json",
+            "log_dir": self.base_local_dir / "logs"
+        }
+
+        # Chemins sources sur la machine hôte (à adapter selon votre structure)
+        self.host_source_paths = host_source_path
+
+    def get_paths(self) -> Dict[str, Any]:
+        """Retourne les chemins appropriés selon la plateforme"""
+        if self.is_linux:
+            return self.docker_paths
+        else:
+            return {key: str(path) for key, path in self.local_paths.items()}
+
+    def setup_local_environment(self):
+        """Configure l'environnement local pour Windows/macOS"""
+        if self.is_linux:
+            print("Environnement Linux détecté - utilisation de Docker")
+            return
+
+        print("Configuration de l'environnement local pour Windows/macOS...")
+
+        # Créer la structure de dossiers
+        self.create_local_directories()
+
+        # Copier les fichiers nécessaires
+        self.copy_files_to_local()
+
+        print(f"Environnement local configuré dans : {self.base_local_dir}")
+
+    def create_local_directories(self):
+        """Crée tous les dossiers nécessaires en local"""
+        directories_to_create = [
+            self.local_paths["image_folder"],
+            self.local_paths["depth_folder"],
+            self.local_paths["output_folder"],
+            self.local_paths["log_dir"]
+        ]
+
+        for directory in directories_to_create:
+            directory.mkdir(parents=True, exist_ok=True)
+            print(f"Dossier créé : {directory}")
+
+    def copy_files_to_local(self):
+        """Copie les fichiers depuis les sources vers l'environnement local"""
+        files_to_copy = [
+            ("rgb_timestamps", "file"),
+            ("depth_timestamps", "file"),
+            ("calibration_file", "file"),
+            ("config_file", "file"),
+            ("image_folder", "directory"),
+            ("depth_folder", "directory")
+        ]
+
+        for key, file_type in files_to_copy:
+            source = Path(self.host_source_paths.get(key, ""))
+            destination = self.local_paths[key]
+
+            if not source.exists():
+                print(f"⚠️  Source non trouvée : {source}")
+                continue
+
+            try:
+                if file_type == "file":
+                    shutil.copy2(source, destination)
+                    print(f"Fichier copié : {source} -> {destination}")
+                elif file_type == "directory":
+                    if destination.exists():
+                        shutil.rmtree(destination)
+                    shutil.copytree(source, destination)
+                    print(f"Dossier copié : {source} -> {destination}")
+            except Exception as e:
+                print(
+                    f"Erreur lors de la copie {source} -> {destination}: {e}")
+
+    def get_docker_volume_mounts(self) -> list:
+        """Génère les arguments de montage de volumes pour Docker"""
+        if not self.is_linux:
+            return []
+
+        mounts = []
+        for key, docker_path in self.docker_paths.items():
+            host_path = self.host_source_paths.get(key)
+            if host_path and Path(host_path).exists():
+                # Pour les dossiers de sortie et logs, créer s'ils n'existent pas
+                if key in ["output_folder", "log_dir"]:
+                    Path(host_path).mkdir(parents=True, exist_ok=True)
+                mounts.append(f"-v {os.path.abspath(host_path)}:{docker_path}")
+
+        return mounts
+
+
 def create_or_clean_dir(path):
-    shutil.rmtree(path, ignore_errors=True) 
+    shutil.rmtree(path, ignore_errors=True)
 
 
 #!/usr/bin/env python3
@@ -24,6 +166,334 @@ def create_or_clean_dir(path):
 Script pour extraire des images d'une vidéo à une fréquence donnée
 Compatible avec RTAB-Map - images corrigées d'orientation et optimisées pour odométrie
 """
+
+
+@dataclass
+class RTABMAPPaths:
+    """Classe pour gérer les chemins RTABMAP selon le système d'exploitation"""
+
+    def __init__(self):
+        self.os_type = self._detect_os()
+        self.base_path = self._get_base_path()
+
+        # Configuration des chemins selon l'OS
+        self._setup_paths()
+
+    def _detect_os(self) -> str:
+        """Détecte le système d'exploitation"""
+        system = platform.system().lower()
+        if system == "windows":
+            return "windows"
+        elif system == "linux":
+            return "linux"
+        elif system == "darwin":
+            return "macos"
+        else:
+            return "unknown"
+
+    def _get_base_path(self) -> str:
+        """Retourne le chemin de base selon l'OS"""
+        if self.os_type == "linux":
+            return "/rtabmap_ws"
+        else:  # Windows/macOS - utilise le répertoire courant
+            current_dir = os.getcwd()
+            return os.path.join(current_dir, "rtabmap_ws")
+
+    def _setup_paths(self):
+        """Configure tous les chemins"""
+        if self.os_type == "linux":
+            # Linux - chemins absolus originaux
+            self.image_folder = "/rtabmap_ws/rgb_sync_docker"
+            self.depth_folder = "/rtabmap_ws/depth_sync_docker"
+            self.rgb_timestamps = "/rtabmap_ws/img_timestamps.csv"
+            self.depth_timestamps = "/rtabmap_ws/depth_timestamps.csv"
+            self.output_folder = "/rtabmap_ws/output/rtabmap"
+            self.calibration_file = "/rtabmap_ws/rtabmap_calib.yaml"
+            self.config_file = "/rtabmap_ws/config.json"
+            self.log_dir = "/rtabmap_ws/logs"
+        else:  # Windows/macOS - chemins relatifs au répertoire courant
+            self.image_folder = os.path.join(self.base_path, "rgb_sync_docker")
+            self.depth_folder = os.path.join(
+                self.base_path, "depth_sync_docker")
+            self.rgb_timestamps = os.path.join(
+                self.base_path, "img_timestamps.csv")
+            self.depth_timestamps = os.path.join(
+                self.base_path, "depth_timestamps.csv")
+            self.output_folder = os.path.join(
+                self.base_path, "output", "rtabmap")
+            self.calibration_file = os.path.join(
+                self.base_path, "rtabmap_calib.yaml")
+            self.config_file = os.path.join(self.base_path, "config.json")
+            self.log_dir = os.path.join(self.base_path, "logs")
+
+    def create_directories(self) -> Dict[str, bool]:
+        """Crée tous les répertoires nécessaires"""
+        directories = [
+            self.image_folder,
+            self.depth_folder,
+            self.output_folder,
+            self.log_dir,
+            os.path.dirname(self.rgb_timestamps),
+            os.path.dirname(self.depth_timestamps),
+            os.path.dirname(self.calibration_file),
+            os.path.dirname(self.config_file)
+        ]
+
+        results = {}
+        for directory in set(directories):  # Supprime les doublons
+            try:
+                Path(directory).mkdir(parents=True, exist_ok=True)
+                results[directory] = True
+                print(f"✓ Répertoire créé/vérifié: {directory}")
+            except Exception as e:
+                results[directory] = False
+                print(f"✗ Erreur création répertoire {directory}: {e}")
+
+        return results
+
+    def check_paths_exist(self) -> Dict[str, bool]:
+        """Vérifie l'existence de tous les chemins"""
+        paths_to_check = {
+            "image_folder": self.image_folder,
+            "depth_folder": self.depth_folder,
+            "output_folder": self.output_folder,
+            "log_dir": self.log_dir,
+            "rgb_timestamps": self.rgb_timestamps,
+            "depth_timestamps": self.depth_timestamps,
+            "calibration_file": self.calibration_file,
+            "config_file": self.config_file
+        }
+
+        results = {}
+        for name, path in paths_to_check.items():
+            exists = os.path.exists(path)
+            results[name] = exists
+            status = "✓" if exists else "✗"
+            print(f"{status} {name}: {path}")
+
+        return results
+
+    def get_all_paths(self) -> Dict[str, str]:
+        """Retourne tous les chemins sous forme de dictionnaire"""
+        return {
+            "os_type": self.os_type,
+            "base_path": self.base_path,
+            "image_folder": self.image_folder,
+            "depth_folder": self.depth_folder,
+            "rgb_timestamps": self.rgb_timestamps,
+            "depth_timestamps": self.depth_timestamps,
+            "output_folder": self.output_folder,
+            "calibration_file": self.calibration_file,
+            "config_file": self.config_file,
+            "log_dir": self.log_dir
+        }
+
+    def save_config(self, config_path: Optional[str] = None) -> bool:
+        """Sauvegarde la configuration des chemins en JSON"""
+        if config_path is None:
+            config_path = self.config_file
+
+        try:
+            config_data = self.get_all_paths()
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            print(f"✓ Configuration sauvegardée: {config_path}")
+            return True
+        except Exception as e:
+            print(f"✗ Erreur sauvegarde configuration: {e}")
+            return False
+
+    def load_config(self, config_path: Optional[str] = None) -> bool:
+        """Charge la configuration depuis un fichier JSON"""
+        if config_path is None:
+            config_path = self.config_file
+
+        try:
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config_data = json.load(f)
+
+                # Mise à jour des attributs
+                for key, value in config_data.items():
+                    if hasattr(self, key):
+                        setattr(self, key, value)
+
+                print(f"✓ Configuration chargée: {config_path}")
+                return True
+            else:
+                print(f"✗ Fichier de configuration non trouvé: {config_path}")
+                return False
+        except Exception as e:
+            print(f"✗ Erreur chargement configuration: {e}")
+            return False
+
+    def setup_logging(self, log_level: str = "INFO") -> logging.Logger:
+        """Configure le logging pour RTABMAP"""
+        log_file = os.path.join(self.log_dir, "rtabmap.log")
+
+        # Créer le répertoire de logs s'il n'existe pas
+        Path(self.log_dir).mkdir(parents=True, exist_ok=True)
+
+        # Configuration du logger
+        logger = logging.getLogger("rtabmap")
+        logger.setLevel(getattr(logging, log_level.upper()))
+
+        # Handler pour fichier
+        file_handler = logging.FileHandler(log_file, encoding='utf-8')
+        file_handler.setLevel(logging.DEBUG)
+
+        # Handler pour console
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+
+        # Format des logs
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        file_handler.setFormatter(formatter)
+        console_handler.setFormatter(formatter)
+
+        # Ajouter les handlers
+        if not logger.handlers:  # Éviter les doublons
+            logger.addHandler(file_handler)
+            logger.addHandler(console_handler)
+
+        logger.info(f"Logger configuré - OS: {self.os_type}")
+        return logger
+
+    def get_relative_paths(self, reference_path: str) -> Dict[str, str]:
+        """Calcule les chemins relatifs par rapport à un répertoire de référence"""
+        ref_path = Path(reference_path)
+        paths = self.get_all_paths()
+
+        relative_paths = {}
+        for name, path in paths.items():
+            if isinstance(path, str) and os.path.isabs(path):
+                try:
+                    rel_path = os.path.relpath(path, reference_path)
+                    relative_paths[name] = rel_path
+                except ValueError:
+                    # Chemins sur des lecteurs différents (Windows)
+                    relative_paths[name] = path
+            else:
+                relative_paths[name] = path
+
+        return relative_paths
+
+
+# Classe principale d'utilisation
+class RTABMAPManager:
+    """Gestionnaire principal pour RTABMAP avec gestion multi-OS"""
+
+    def __init__(self):
+        self.paths = RTABMAPPaths()
+        self.logger = None
+
+    def initialize(self) -> bool:
+        """Initialise complètement l'environnement RTABMAP"""
+        print(f"🔧 Initialisation RTABMAP sur {self.paths.os_type.upper()}")
+        if self.paths.os_type == "linux":
+            print(f"📁 Chemin de base: {self.paths.base_path} (système)")
+        else:
+            print(
+                f"📁 Chemin de base: {self.paths.base_path} (répertoire courant)")
+            print(f"📂 Répertoire d'exécution: {os.getcwd()}")
+
+        # Créer les répertoires
+        print("\n📂 Création des répertoires...")
+        dir_results = self.paths.create_directories()
+
+        # Vérifier les chemins
+        print("\n🔍 Vérification des chemins...")
+        path_results = self.paths.check_paths_exist()
+
+        # Configurer le logging
+        print("\n📝 Configuration du logging...")
+        self.logger = self.paths.setup_logging()
+
+        # Sauvegarder la configuration
+        print("\n💾 Sauvegarde de la configuration...")
+        config_saved = self.paths.save_config()
+
+        # Résumé
+        success = all(dir_results.values()) and config_saved
+        status = "✅ SUCCÈS" if success else "❌ ÉCHEC"
+        print(f"\n{status} - Initialisation terminée")
+
+        return success
+
+    def get_summary(self) -> str:
+        """Retourne un résumé de la configuration"""
+        paths = self.paths.get_all_paths()
+
+        if self.paths.os_type == "linux":
+            location_info = "Chemins système absolus"
+        else:
+            location_info = f"Répertoire courant: {os.getcwd()}"
+
+        summary = f"""
+            🔧 Configuration RTABMAP
+            ========================
+            Système d'exploitation: {paths['os_type'].upper()}
+            {location_info}
+            Chemin de base: {paths['base_path']}
+
+            Répertoires:
+            - Images RGB: {paths['image_folder']}
+            - Images Depth: {paths['depth_folder']}
+            - Sortie: {paths['output_folder']}
+            - Logs: {paths['log_dir']}
+
+            Fichiers:
+            - Timestamps RGB: {paths['rgb_timestamps']}
+            - Timestamps Depth: {paths['depth_timestamps']}
+            - Calibration: {paths['calibration_file']}
+            - Configuration: {paths['config_file']}
+        """
+        return summary
+
+
+def rename_files_to_timestamps(folder_path, start_time=DEFAULT_START_TIME, fps=DEFAULT_FPS):
+    files = []
+    for ext in ['*.png', '*.jpg', '*.jpeg', '*.tiff', '*.tif']:
+        files.extend(glob.glob(os.path.join(folder_path, ext)))
+
+    if not files:
+        print(f"[WARN] Aucun fichier trouvé dans {folder_path}")
+        return
+
+    files = sorted(files)
+
+    print("[INFO] Renommage des avec les timestamps...")
+    pbar = tqdm(files, desc="Renommage", unit="img")
+
+    timestamp = start_time
+    dt = 1.0 / fps
+
+    for file in pbar:
+        basename = os.path.basename(file)
+        name_without_ext, extension = os.path.splitext(basename)
+        extension = extension.lower()
+
+        new_file = f"{timestamp:.6f}{extension}"
+        old_path = os.path.join(file)
+        new_path = os.path.join(folder_path, new_file)
+        os.rename(old_path, new_path)
+        timestamp += dt
+
+    print(f"[INFO] Renamed {len(files)} files in '{folder_path}'.")
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def fix_image_orientation(image, force_rotation=None):
@@ -165,31 +635,31 @@ def create_camera_info_file(output_dir, image_width, image_height):
     k3 = 0.0    # Pas de distorsion cubique
 
     camera_yaml = f"""%YAML:1.0
----
-camera_name: iphone_camera_robust
-image_width: {image_width}
-image_height: {image_height}
-camera_matrix:
-   rows: 3
-   cols: 3
-   data: [ {fx:.6f}, 0., {cx:.6f}, 0., {fy:.6f}, {cy:.6f}, 0., 0., 1. ]
-distortion_coefficients:
-   rows: 1
-   cols: 5
-   data: [ {k1:.6f}, {k2:.6f}, {p1:.6f}, {p2:.6f}, {k3:.6f} ]
-rectification_matrix:
-   rows: 3
-   cols: 3
-   data: [ 1., 0., 0., 0., 1., 0., 0., 0., 1. ]
-projection_matrix:
-   rows: 3
-   cols: 4
-   data: [ {fx:.6f}, 0., {cx:.6f}, 0., 0., {fy:.6f}, {cy:.6f}, 0., 0., 0., 1., 0. ]
-local_transform:
-   rows: 3
-   cols: 4
-   data: [ 0., 0., 1., 0., -1., 0., 0., 0., 0., -1., 0., 0. ]
-"""
+        ---
+        camera_name: iphone_camera_robust
+        image_width: {image_width}
+        image_height: {image_height}
+        camera_matrix:
+        rows: 3
+        cols: 3
+        data: [ {fx:.6f}, 0., {cx:.6f}, 0., {fy:.6f}, {cy:.6f}, 0., 0., 1. ]
+        distortion_coefficients:
+        rows: 1
+        cols: 5
+        data: [ {k1:.6f}, {k2:.6f}, {p1:.6f}, {p2:.6f}, {k3:.6f} ]
+        rectification_matrix:
+        rows: 3
+        cols: 3
+        data: [ 1., 0., 0., 0., 1., 0., 0., 0., 1. ]
+        projection_matrix:
+        rows: 3
+        cols: 4
+        data: [ {fx:.6f}, 0., {cx:.6f}, 0., 0., {fy:.6f}, {cy:.6f}, 0., 0., 0., 1., 0. ]
+        local_transform:
+        rows: 3
+        cols: 4
+        data: [ 0., 0., 1., 0., -1., 0., 0., 0., 0., -1., 0., 0. ]
+        """
 
     yaml_path = os.path.join(output_dir, "camera_calibration.yaml")
     with open(yaml_path, 'w') as f:
@@ -198,51 +668,50 @@ local_transform:
     # Paramètres RTAB-Map spécifiquement pour résoudre "Not enough inliers"
     info_text = f"""# Calibration iPhone pour résoudre 'Not enough inliers'
 
-Dimensions: {image_width} x {image_height}
-Focale fx/fy: {fx:.2f} pixels (conservative)
-Centre optique: ({cx:.2f}, {cy:.2f})
-Distorsion minimale: k1={k1:.3f}
+        Dimensions: {image_width} x {image_height}
+        Focale fx/fy: {fx:.2f} pixels (conservative)
+        Centre optique: ({cx:.2f}, {cy:.2f})
+        Distorsion minimale: k1={k1:.3f}
 
-PARAMÈTRES RTAB-MAP CRITIQUES pour corriger "Not enough inliers":
+        PARAMÈTRES RTAB-MAP CRITIQUES pour corriger "Not enough inliers":
 
-# Seuils d'inliers réduits (CRITIQUE)
---Vis/MinInliers 8
---Vis/InlierDistance 0.15
---OdomF2M/MaxSize 2000
---OdomF2M/WindowSize 10
+        # Seuils d'inliers réduits (CRITIQUE)
+        --Vis/MinInliers 8
+        --Vis/InlierDistance 0.15
+        --OdomF2M/MaxSize 2000
+        --OdomF2M/WindowSize 10
 
-# Détection de features robuste
---Kp/DetectorStrategy 6
---Kp/MaxFeatures 800
---GFTT/MinDistance 3
---GFTT/QualityLevel 0.0005
+        # Détection de features robuste
+        --Kp/DetectorStrategy 6
+        --Kp/MaxFeatures 800
+        --GFTT/MinDistance 3
+        --GFTT/QualityLevel 0.0005
 
-# Correspondances plus tolérantes
---Vis/MaxFeatures 1000
---RGBD/OptimizeMaxError 0.05
---Odom/FillInfoData true
+        # Correspondances plus tolérantes
+        --Vis/MaxFeatures 1000
+        --RGBD/OptimizeMaxError 0.05
+        --Odom/FillInfoData true
 
-# Stratégie odométrie
---Odom/Strategy 1
---Odom/ResetCountdown 1
+        # Stratégie odométrie
+        --Odom/Strategy 1
+        --Odom/ResetCountdown 1
 
-COMMANDE COMPLÈTE (COPIEZ-COLLEZ):
-rtabmap --camera_info_path camera_calibration.yaml \\
-        --Vis/MinInliers 8 --Vis/InlierDistance 0.15 \\
-        --OdomF2M/MaxSize 2000 --OdomF2M/WindowSize 10 \\
-        --Kp/DetectorStrategy 6 --Kp/MaxFeatures 800 \\
-        --GFTT/MinDistance 3 --GFTT/QualityLevel 0.0005 \\
-        --Odom/Strategy 1 --Odom/ResetCountdown 1
+        COMMANDE COMPLÈTE (COPIEZ-COLLEZ):
+        rtabmap --camera_info_path camera_calibration.yaml \\
+                --Vis/MinInliers 8 --Vis/InlierDistance 0.15 \\
+                --OdomF2M/MaxSize 2000 --OdomF2M/WindowSize 10 \\
+                --Kp/DetectorStrategy 6 --Kp/MaxFeatures 800 \\
+                --GFTT/MinDistance 3 --GFTT/QualityLevel 0.0005 \\
+                --Odom/Strategy 1 --Odom/ResetCountdown 1
 
-Si l'erreur persiste, réduisez encore:
---Vis/MinInliers 5
-"""
+        Si l'erreur persiste, réduisez encore:
+        --Vis/MinInliers 5
+        """
 
     info_path = os.path.join(output_dir, "camera_info.txt")
     with open(info_path, 'w') as f:
         f.write(info_text)
 
-    print(f"✓ Calibration créée avec paramètres anti-'Not enough inliers'")
 
 
 def extract_frames(video_path, output_dir, frequency=1.0, enhance_images=True, rotation=None):
@@ -368,12 +837,12 @@ def main():
         description="Extrait des images d'une vidéo pour odométrie et estimation de profondeur",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Exemples d'utilisation:
-  python extract_frames.py video.mp4 -o images/ -f 1.0                    # Auto rotation
-  python extract_frames.py video.mp4 -o images/ -f 1.0 --rotation cw      # Force rotation horaire
-  python extract_frames.py video.mp4 -o images/ -f 1.0 --rotation ccw     # Force rotation anti-horaire
-  python extract_frames.py video.mp4 -o images/ -f 1.0 --rotation none    # Pas de rotation
-        """
+    Exemples d'utilisation:
+    python extract_frames.py video.mp4 -o images/ -f 1.0                    # Auto rotation
+    python extract_frames.py video.mp4 -o images/ -f 1.0 --rotation cw      # Force rotation horaire
+    python extract_frames.py video.mp4 -o images/ -f 1.0 --rotation ccw     # Force rotation anti-horaire
+    python extract_frames.py video.mp4 -o images/ -f 1.0 --rotation none    # Pas de rotation
+            """
     )
 
     parser.add_argument('video', help='Chemin vers le fichier vidéo')

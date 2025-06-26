@@ -79,66 +79,67 @@ def generate_depth_maps(image_folder, output_folder, image_extensions=(".png", "
         # Create output directory if it doesn't exist
         os.makedirs(output_folder)
         print(f"Created output directory: {output_folder}")
-    
+
     # Get all image files with specified extensions
     image_files = []
     for extension in image_extensions:
         image_files.extend([
-            os.path.join(image_folder, f) 
-            for f in os.listdir(image_folder) 
+            os.path.join(image_folder, f)
+            for f in os.listdir(image_folder)
             if f.lower().endswith(extension)
         ])
     image_files = sorted(image_files)
-    
+
     start_time = time.time()
-    
+
     # Process each image to generate depth maps
     for idx, image_path in enumerate(image_files):
         # Load image
         raw_img = cv2.imread(image_path)
         raw_img = cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)  # Convert BGR → RGB
-        
+
         # Convert to tensor
         image_tensor = model.image2tensor(raw_img, input_size=518)[0]
         image_tensor = image_tensor.to(device)
-        
+
         # Inference
         with torch.no_grad():
             depth = model.forward(image_tensor)
-        
+
         heatmap = depth.squeeze().cpu().numpy()
         # Resize to original dimensions
-        heatmap_resized = cv2.resize(heatmap, (raw_img.shape[1], raw_img.shape[0]))
-        
+        heatmap_resized = cv2.resize(
+            heatmap, (raw_img.shape[1], raw_img.shape[0]))
+
         # Save output
         original_filename = os.path.splitext(os.path.basename(image_path))[0]
         output_path = os.path.join(
             output_folder, f"{original_filename}.{output_extension.lstrip('.').lower()}")
         cv2.imwrite(output_path, heatmap_resized)
-        
+
         if (idx + 1) % 10 == 0 or idx == len(image_files) - 1:
             print(f"Processed {idx + 1}/{len(image_files)} images")
-    
+
     end_time = time.time()
-    
+
     # Performance calculations
     total_time = end_time - start_time
     num_images = len(image_files)
     average_time_per_image = total_time / num_images if num_images > 0 else 0
-    
+
     # Create results dictionary
     results = {
         "num_images": num_images,
         "total_time": total_time,
         "average_time_per_image": average_time_per_image
     }
-    
+
     # Display results
     print("Processing completed")
     print(f"Total images processed: {num_images}")
     print(f"Total execution time: {total_time:.2f} seconds")
     print(f"Average time per image: {average_time_per_image:.4f} seconds")
-    
+
     return results
 
 

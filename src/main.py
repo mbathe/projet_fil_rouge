@@ -23,6 +23,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 from datetime import datetime
+from utils import MultiPlatformPathManager
 
 # Configuration des constantes
 SCRIPT_DIR = Path(__file__).parent.absolute()
@@ -476,6 +477,26 @@ class RTAB3DMapper:
                 output_folder=OUTPUT_RTABMAP,
                 video_file=args.video_file
             )
+
+            path_hote = {
+                "image_folder": args.image_folder,
+                "depth_folder": args.depth_folder,
+                "calibration_file": args.calibration_file,
+                "rgb_timestamps": args.rgb_timestamps,
+                "depth_timestamps": args.depth_timestamps,
+                "output_folder": OUTPUT_RTABMAP,
+                "video_file": args.video_file
+            }
+
+            path_manager = MultiPlatformPathManager(
+                host_source_path=path_hote)
+
+            # Configuration de l'environnement
+            path_manager.setup_local_environment()
+            # path_manager.print_configuration()
+            paths = path_manager.get_paths()
+            print(paths)
+
             self.config = RTABMapConfig(
                 reprocess=args.reprocess,
                 export_format=ExportFormat(args.export_format)

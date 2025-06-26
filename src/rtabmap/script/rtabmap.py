@@ -1,4 +1,3 @@
-import platform
 import os
 import glob
 import pandas as pd
@@ -27,28 +26,6 @@ DEPTH_TIMESTAMPS = "depth_timestamps.csv"
 EXPORT_PARAMS_FILES = f"{RTABMAB_DOCKER_ROOT}/export_params.json"
 GENERATE_DB_PARAMS_FILES = f"{RTABMAB_DOCKER_ROOT}/db_params.json"
 REPROCESS_PARAMS_FILES = f"{RTABMAB_DOCKER_ROOT}/reprocess_params.json"
-
-
-# Obtenir le nom du système
-system = platform.system()
-print(f"Système d'exploitation : {system}")
-
-# Vérifications spécifiques
-if system == "Windows":
-    print("Vous êtes sur Windows")
-elif system == "Linux":
-    print("Vous êtes sur Linux")
-elif system == "Darwin":  # macOS
-    print("Vous êtes sur macOS")
-else:
-    print(f"Système non reconnu : {system}")
-
-
-
-
-
-
-
 
 
 
