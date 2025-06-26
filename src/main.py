@@ -495,7 +495,7 @@ class RTAB3DMapper:
             path_manager.setup_local_environment()
             # path_manager.print_configuration()
             paths = path_manager.get_paths()
-            print(paths)
+          
 
             self.config = RTABMapConfig(
                 reprocess=args.reprocess,

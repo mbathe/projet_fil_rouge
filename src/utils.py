@@ -6,43 +6,33 @@ Compatible avec RTAB-Map - les images sont nommées avec timestamp
 
 import logging
 import json
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 from dataclasses import dataclass
 import platform
 import numpy as np
 import cv2
-import os
 import argparse
 import sys
 from pathlib import Path
-
-import os
 import shutil
-
-
-import os
-import sys
 import glob
 from tqdm import tqdm
 import shutil
 import json
 import argparse
-
+import os
 
 SHOW_PROGRESS = True  # Set to False to disable progress bars
 
 WORKSPACE_ROOT = os.getcwd()
-DEFAULT_DIR_RTABMAP = "rtabmap_ws"
-DEFAULT_DIR_IMAGE = "rgb_sync"
-DEFAULT_DIR_DEPTH = "depth_sync"
-DEFAULT_FILE_CALIB = "rtabmap_calib.yaml"
 DEFAULT_FPS = 20.0
 DEFAULT_START_TIME = 1400000000.0
 
 
+
 class MultiPlatformPathManager:
     def __init__(self, host_source_path, base_local_dir: str = "./rtabmap_ws"):
-        self.is_linux = platform.system() != "Linux"
+        self.is_linux = platform.system() == "Linux"
         self.base_local_dir = Path(base_local_dir)
 
         # Configuration des chemins Docker (pour Linux)
@@ -393,31 +383,31 @@ class RTABMAPManager:
         """Initialise complètement l'environnement RTABMAP"""
         print(f"🔧 Initialisation RTABMAP sur {self.paths.os_type.upper()}")
         if self.paths.os_type == "linux":
-            print(f"📁 Chemin de base: {self.paths.base_path} (système)")
+            print(f"Chemin de base: {self.paths.base_path} (système)")
         else:
             print(
-                f"📁 Chemin de base: {self.paths.base_path} (répertoire courant)")
-            print(f"📂 Répertoire d'exécution: {os.getcwd()}")
+                f"Chemin de base: {self.paths.base_path} (répertoire courant)")
+            print(f" Répertoire d'exécution: {os.getcwd()}")
 
         # Créer les répertoires
-        print("\n📂 Création des répertoires...")
+        print("\n Création des répertoires...")
         dir_results = self.paths.create_directories()
 
         # Vérifier les chemins
-        print("\n🔍 Vérification des chemins...")
+        print("\n Vérification des chemins...")
         path_results = self.paths.check_paths_exist()
 
         # Configurer le logging
-        print("\n📝 Configuration du logging...")
+        print("\n Configuration du logging...")
         self.logger = self.paths.setup_logging()
 
         # Sauvegarder la configuration
-        print("\n💾 Sauvegarde de la configuration...")
+        print("\n Sauvegarde de la configuration...")
         config_saved = self.paths.save_config()
 
         # Résumé
         success = all(dir_results.values()) and config_saved
-        status = "✅ SUCCÈS" if success else "❌ ÉCHEC"
+        status = "SUCCÈS" if success else "ÉCHEC"
         print(f"\n{status} - Initialisation terminée")
 
         return success
@@ -818,18 +808,6 @@ def extract_frames(video_path, output_dir, frequency=1.0, enhance_images=True, r
     print(
         f"Fichier de calibration: {os.path.join(output_dir, 'camera_calibration.yaml')}")
 
-    print(f"\nOptimisations appliquées:")
-    print(f"✓ Correction d'orientation iPhone")
-    print(f"✓ Amélioration contraste et netteté pour features")
-    print(f"✓ Préservation gradients pour estimation profondeur")
-    print(f"✓ Paramètres RTAB-Map pour corriger erreur odométrie")
-
-    print(f"\nPour corriger l'erreur 'Not enough inliers', utilisez:")
-    print(
-        f"rtabmap --camera_info_path {os.path.join(output_dir, 'camera_calibration.yaml')} \\")
-    print(f"        --Odom/Strategy 1 --OdomF2M/MaxSize 1000 --Kp/MaxFeatures 600 \\")
-    print(f"        --GFTT/MinDistance 5 --Vis/MinInliers 15")
-
     return True
 
 def main():
@@ -837,11 +815,11 @@ def main():
         description="Extrait des images d'une vidéo pour odométrie et estimation de profondeur",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-    Exemples d'utilisation:
-    python extract_frames.py video.mp4 -o images/ -f 1.0                    # Auto rotation
-    python extract_frames.py video.mp4 -o images/ -f 1.0 --rotation cw      # Force rotation horaire
-    python extract_frames.py video.mp4 -o images/ -f 1.0 --rotation ccw     # Force rotation anti-horaire
-    python extract_frames.py video.mp4 -o images/ -f 1.0 --rotation none    # Pas de rotation
+        Exemples d'utilisation:
+        python extract_frames.py video.mp4 -o images/ -f 1.0                    # Auto rotation
+        python extract_frames.py video.mp4 -o images/ -f 1.0 --rotation cw      # Force rotation horaire
+        python extract_frames.py video.mp4 -o images/ -f 1.0 --rotation ccw     # Force rotation anti-horaire
+        python extract_frames.py video.mp4 -o images/ -f 1.0 --rotation none    # Pas de rotation
             """
     )
 
